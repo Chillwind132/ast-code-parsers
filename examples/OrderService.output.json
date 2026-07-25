@@ -1,0 +1,139 @@
+[
+  {
+    "symbol_type": "method",
+    "name": "applyDiscount",
+    "qualified_name": "com.example.orders.OrderService.applyDiscount",
+    "namespace": "com.example.orders",
+    "modifiers": [
+      "public"
+    ],
+    "annotations": [
+      {
+        "fully_qualified_name": "java.lang.Override",
+        "values": {},
+        "name": "Override"
+      },
+      {
+        "fully_qualified_name": "Transactional",
+        "values": {
+          "readOnly": "false"
+        },
+        "name": "Transactional"
+      }
+    ],
+    "parameters": [
+      {
+        "name": "order",
+        "fully_qualified_type": "Order",
+        "type": "Order"
+      },
+      {
+        "name": "code",
+        "fully_qualified_type": "java.lang.String",
+        "type": "String"
+      }
+    ],
+    "return_type": {
+      "fully_qualified_type": "BigDecimal",
+      "type": "BigDecimal"
+    },
+    "documentation": {
+      "summary": "Applies a promotional discount to an order.",
+      "raw": "Applies a promotional discount to an order.\n\n@param order the order to discount\n@param code the promo code to apply\n@return the new total after discount\n@throws InvalidPromoException if the code is expired\n",
+      "returns": "the new total after discount",
+      "params": [
+        {
+          "name": "order",
+          "description": "the order to discount"
+        },
+        {
+          "name": "code",
+          "description": "the promo code to apply"
+        }
+      ],
+      "throws": [
+        {
+          "exception_type": "InvalidPromoException",
+          "description": "if the code is expired"
+        }
+      ]
+    },
+    "body_code": "{\n    Promo promo \u003d promoRepository.findByCode(code);\n    validate(promo);\n    return order.getTotal().subtract(promo.getAmount());\n}",
+    "full_code": "/**\n * Applies a promotional discount to an order.\n *\n * @param order the order to discount\n * @param code the promo code to apply\n * @return the new total after discount\n * @throws InvalidPromoException if the code is expired\n */\n@Override\n@Transactional(readOnly \u003d false)\npublic BigDecimal applyDiscount(Order order, String code) throws InvalidPromoException {\n    Promo promo \u003d promoRepository.findByCode(code);\n    validate(promo);\n    return order.getTotal().subtract(promo.getAmount());\n}",
+    "calls": [
+      {
+        "fully_qualified_callee_name": "findByCode",
+        "callee_name": "findByCode",
+        "line_span": {
+          "start_column": 23,
+          "start_line": 18,
+          "end_line": 18,
+          "end_column": 54
+        }
+      },
+      {
+        "fully_qualified_callee_name": "validate",
+        "callee_name": "validate",
+        "line_span": {
+          "start_column": 9,
+          "start_line": 19,
+          "end_line": 19,
+          "end_column": 23
+        }
+      },
+      {
+        "fully_qualified_callee_name": "subtract",
+        "callee_name": "subtract",
+        "line_span": {
+          "start_column": 16,
+          "start_line": 20,
+          "end_line": 20,
+          "end_column": 59
+        }
+      },
+      {
+        "fully_qualified_callee_name": "getTotal",
+        "callee_name": "getTotal",
+        "line_span": {
+          "start_column": 16,
+          "start_line": 20,
+          "end_line": 20,
+          "end_column": 31
+        }
+      },
+      {
+        "fully_qualified_callee_name": "getAmount",
+        "callee_name": "getAmount",
+        "line_span": {
+          "start_column": 42,
+          "start_line": 20,
+          "end_line": 20,
+          "end_column": 58
+        }
+      }
+    ],
+    "line_span": {
+      "start_column": 5,
+      "start_line": 15,
+      "end_line": 21,
+      "end_column": 5
+    },
+    "inherits_from": [
+      "BaseService",
+      "Auditable"
+    ],
+    "implemented_interface_members": [],
+    "thrown_exceptions": [
+      {
+        "exception_type": "InvalidPromoException",
+        "fully_qualified_exception_type": "InvalidPromoException"
+      }
+    ],
+    "is_override": false,
+    "imported_types": [
+      "java.util.List"
+    ],
+    "inheritance_hierarchy": [],
+    "language": "java"
+  }
+]

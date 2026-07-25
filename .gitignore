@@ -1,0 +1,18 @@
+# Java build artifacts
+java/bin/
+java/build_tmp/
+java/lib/
+java/*.jar
+
+# .NET build artifacts
+csharp/bin/
+csharp/obj/
+csharp/linux-x64/
+csharp/win-x64/
+csharp/*.pdb
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
