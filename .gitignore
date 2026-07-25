@@ -11,6 +11,9 @@ csharp/linux-x64/
 csharp/win-x64/
 csharp/*.pdb
 
+# Staged release artifacts
+dist/
+
 # Editor / OS
 .vscode/
 .idea/
