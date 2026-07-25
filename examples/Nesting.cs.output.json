@@ -1,137 +1,148 @@
-[
-  {
-    "symbol_type": "method",
-    "name": "Area",
-    "qualified_name": "Example.Modern.Circle.Area",
-    "namespace": "Example.Modern",
-    "modifiers": [
-      "public"
-    ],
-    "annotations": [],
-    "parameters": [],
-    "return_type": {
-      "type": "double",
-      "fully_qualified_type": "System.Double"
+{
+  "schema_version": 2,
+  "file": "examples/Nesting.cs",
+  "language": "csharp",
+  "imports": [],
+  "top_level_comment": "// Companion to OrderService.cs, covering the declaration shapes whose names are easy to get\n// wrong: a file-scoped namespace (the default since C# 10), a nested namespace, nested types,\n// and a record. Every method here must come back with its full dotted path.",
+  "types": [
+    {
+      "name": "Circle",
+      "qualified_name": "Example.Modern.Circle",
+      "namespace": "Example.Modern",
+      "kind": "record",
+      "inherits_from": [],
+      "inheritance_hierarchy": [
+        "System.Object",
+        "System.IEquatable\u003CExample.Modern.Circle\u003E"
+      ],
+      "methods": [
+        {
+          "name": "Area",
+          "qualified_name": "Example.Modern.Circle.Area",
+          "modifiers": [
+            "public"
+          ],
+          "annotations": [],
+          "parameters": [],
+          "return_type": {
+            "type": "System.Double",
+            "resolved": true
+          },
+          "documentation": {
+            "summary": null,
+            "params": [],
+            "returns": null
+          },
+          "calls": [],
+          "line_span": {
+            "start_line": 8,
+            "start_column": 5,
+            "end_line": 8,
+            "end_column": 62
+          },
+          "thrown_exceptions": [],
+          "is_override": false,
+          "implemented_interface_members": [],
+          "data_provider_name": null,
+          "data_provider_source": null
+        }
+      ]
     },
-    "documentation": {
-      "summary": null,
-      "params": [],
-      "returns": null,
-      "throws": [],
-      "raw": null
+    {
+      "name": "Widget",
+      "qualified_name": "Example.Modern.Widget",
+      "namespace": "Example.Modern",
+      "kind": "class",
+      "inherits_from": [],
+      "inheritance_hierarchy": [
+        "System.Object"
+      ],
+      "methods": [
+        {
+          "name": "Spin",
+          "qualified_name": "Example.Modern.Widget.Spin",
+          "modifiers": [
+            "public"
+          ],
+          "annotations": [],
+          "parameters": [
+            {
+              "name": "name",
+              "type": "System.String",
+              "resolved": true
+            }
+          ],
+          "return_type": {
+            "type": "System.Int32",
+            "resolved": true
+          },
+          "documentation": {
+            "summary": null,
+            "params": [],
+            "returns": null
+          },
+          "calls": [],
+          "line_span": {
+            "start_line": 13,
+            "start_column": 5,
+            "end_line": 13,
+            "end_column": 49
+          },
+          "thrown_exceptions": [],
+          "is_override": false,
+          "implemented_interface_members": [],
+          "data_provider_name": null,
+          "data_provider_source": null
+        }
+      ]
     },
-    "body_code": "=\u003E System.Math.PI * Radius * Radius",
-    "full_code": "    public double Area() =\u003E System.Math.PI * Radius * Radius;\n",
-    "calls": [],
-    "line_span": {
-      "start_line": 8,
-      "start_column": 5,
-      "end_line": 8,
-      "end_column": 62
-    },
-    "inherits_from": [],
-    "implemented_interface_members": [],
-    "thrown_exceptions": [],
-    "is_override": false,
-    "data_provider_name": null,
-    "data_provider_source": null,
-    "imported_types": [],
-    "top_level_comment": null,
-    "inheritance_hierarchy": [],
-    "language": "csharp"
-  },
-  {
-    "symbol_type": "method",
-    "name": "Spin",
-    "qualified_name": "Example.Modern.Widget.Spin",
-    "namespace": "Example.Modern",
-    "modifiers": [
-      "public"
-    ],
-    "annotations": [],
-    "parameters": [
-      {
-        "name": "name",
-        "type": "string",
-        "fully_qualified_type": "System.String"
-      }
-    ],
-    "return_type": {
-      "type": "int",
-      "fully_qualified_type": "System.Int32"
-    },
-    "documentation": {
-      "summary": null,
-      "params": [],
-      "returns": null,
-      "throws": [],
-      "raw": null
-    },
-    "body_code": "=\u003E name.Length",
-    "full_code": "    public int Spin(string name) =\u003E name.Length;\n",
-    "calls": [],
-    "line_span": {
-      "start_line": 13,
-      "start_column": 5,
-      "end_line": 13,
-      "end_column": 49
-    },
-    "inherits_from": [],
-    "implemented_interface_members": [],
-    "thrown_exceptions": [],
-    "is_override": false,
-    "data_provider_name": null,
-    "data_provider_source": null,
-    "imported_types": [],
-    "top_level_comment": null,
-    "inheritance_hierarchy": [],
-    "language": "csharp"
-  },
-  {
-    "symbol_type": "method",
-    "name": "Turn",
-    "qualified_name": "Example.Modern.Widget.Cog.Turn",
-    "namespace": "Example.Modern",
-    "modifiers": [
-      "public"
-    ],
-    "annotations": [],
-    "parameters": [
-      {
-        "name": "times",
-        "type": "int",
-        "fully_qualified_type": "System.Int32"
-      }
-    ],
-    "return_type": {
-      "type": "int",
-      "fully_qualified_type": "System.Int32"
-    },
-    "documentation": {
-      "summary": null,
-      "params": [],
-      "returns": null,
-      "throws": [],
-      "raw": null
-    },
-    "body_code": "=\u003E times",
-    "full_code": "        public int Turn(int times) =\u003E times;\n",
-    "calls": [],
-    "line_span": {
-      "start_line": 17,
-      "start_column": 9,
-      "end_line": 17,
-      "end_column": 45
-    },
-    "inherits_from": [],
-    "implemented_interface_members": [],
-    "thrown_exceptions": [],
-    "is_override": false,
-    "data_provider_name": null,
-    "data_provider_source": null,
-    "imported_types": [],
-    "top_level_comment": null,
-    "inheritance_hierarchy": [],
-    "language": "csharp"
-  }
-]
+    {
+      "name": "Widget.Cog",
+      "qualified_name": "Example.Modern.Widget.Cog",
+      "namespace": "Example.Modern",
+      "kind": "class",
+      "inherits_from": [],
+      "inheritance_hierarchy": [
+        "System.Object"
+      ],
+      "methods": [
+        {
+          "name": "Turn",
+          "qualified_name": "Example.Modern.Widget.Cog.Turn",
+          "modifiers": [
+            "public"
+          ],
+          "annotations": [],
+          "parameters": [
+            {
+              "name": "times",
+              "type": "System.Int32",
+              "resolved": true
+            }
+          ],
+          "return_type": {
+            "type": "System.Int32",
+            "resolved": true
+          },
+          "documentation": {
+            "summary": null,
+            "params": [],
+            "returns": null
+          },
+          "calls": [],
+          "line_span": {
+            "start_line": 17,
+            "start_column": 9,
+            "end_line": 17,
+            "end_column": 45
+          },
+          "thrown_exceptions": [],
+          "is_override": false,
+          "implemented_interface_members": [],
+          "data_provider_name": null,
+          "data_provider_source": null
+        }
+      ]
+    }
+  ]
+}

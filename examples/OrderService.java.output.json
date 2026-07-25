@@ -1,379 +1,430 @@
-[
-  {
-    "symbol_type": "method",
-    "name": "getAmount",
-    "qualified_name": "com.example.orders.Promo.getAmount",
-    "namespace": "com.example.orders",
-    "modifiers": [],
-    "annotations": [],
-    "parameters": [],
-    "return_type": {
-      "fully_qualified_type": "java.math.BigDecimal",
-      "type": "BigDecimal"
-    },
-    "documentation": {
-      "params": [],
-      "throws": []
-    },
-    "body_code": "{\n    return new BigDecimal(\"5.00\");\n}",
-    "full_code": "BigDecimal getAmount() {\n    return new BigDecimal(\"5.00\");\n}",
-    "calls": [],
-    "line_span": {
-      "start_column": 5,
-      "start_line": 16,
-      "end_line": 18,
-      "end_column": 5
-    },
-    "inherits_from": [],
-    "implemented_interface_members": [],
-    "thrown_exceptions": [],
-    "is_override": false,
-    "imported_types": [
-      "java.math.BigDecimal"
-    ],
-    "inheritance_hierarchy": [
-      "java.lang.Object"
-    ],
-    "language": "java"
-  },
-  {
-    "symbol_type": "method",
-    "name": "getTotal",
-    "qualified_name": "com.example.orders.Order.getTotal",
-    "namespace": "com.example.orders",
-    "modifiers": [],
-    "annotations": [],
-    "parameters": [],
-    "return_type": {
-      "fully_qualified_type": "java.math.BigDecimal",
-      "type": "BigDecimal"
-    },
-    "documentation": {
-      "params": [],
-      "throws": []
-    },
-    "body_code": "{\n    return new BigDecimal(\"100.00\");\n}",
-    "full_code": "BigDecimal getTotal() {\n    return new BigDecimal(\"100.00\");\n}",
-    "calls": [],
-    "line_span": {
-      "start_column": 5,
-      "start_line": 22,
-      "end_line": 24,
-      "end_column": 5
-    },
-    "inherits_from": [],
-    "implemented_interface_members": [],
-    "thrown_exceptions": [],
-    "is_override": false,
-    "imported_types": [
-      "java.math.BigDecimal"
-    ],
-    "inheritance_hierarchy": [
-      "java.lang.Object"
-    ],
-    "language": "java"
-  },
-  {
-    "symbol_type": "method",
-    "name": "findByCode",
-    "qualified_name": "com.example.orders.PromoRepository.findByCode",
-    "namespace": "com.example.orders",
-    "modifiers": [],
-    "annotations": [],
-    "parameters": [
-      {
-        "name": "code",
-        "fully_qualified_type": "java.lang.String",
-        "type": "String"
-      }
-    ],
-    "return_type": {
-      "fully_qualified_type": "com.example.orders.Promo",
-      "type": "Promo"
-    },
-    "documentation": {
-      "params": [],
-      "throws": []
-    },
-    "body_code": "{\n    return new Promo();\n}",
-    "full_code": "Promo findByCode(String code) {\n    return new Promo();\n}",
-    "calls": [],
-    "line_span": {
-      "start_column": 5,
-      "start_line": 28,
-      "end_line": 30,
-      "end_column": 5
-    },
-    "inherits_from": [],
-    "implemented_interface_members": [],
-    "thrown_exceptions": [],
-    "is_override": false,
-    "imported_types": [
-      "java.math.BigDecimal"
-    ],
-    "inheritance_hierarchy": [
-      "java.lang.Object"
-    ],
-    "language": "java"
-  },
-  {
-    "symbol_type": "method",
-    "name": "applyDiscount",
-    "qualified_name": "com.example.orders.BaseService.applyDiscount",
-    "namespace": "com.example.orders",
-    "modifiers": [
-      "abstract"
-    ],
-    "annotations": [],
-    "parameters": [
-      {
-        "name": "order",
-        "fully_qualified_type": "com.example.orders.Order",
-        "type": "Order"
-      },
-      {
-        "name": "code",
-        "fully_qualified_type": "java.lang.String",
-        "type": "String"
-      }
-    ],
-    "return_type": {
-      "fully_qualified_type": "java.math.BigDecimal",
-      "type": "BigDecimal"
-    },
-    "documentation": {
-      "params": [],
-      "throws": []
-    },
-    "body_code": "abstract BigDecimal applyDiscount(Order order, String code) throws InvalidPromoException;",
-    "full_code": "abstract BigDecimal applyDiscount(Order order, String code) throws InvalidPromoException;",
-    "calls": [],
-    "line_span": {
-      "start_column": 5,
-      "start_line": 34,
-      "end_line": 34,
-      "end_column": 93
-    },
-    "inherits_from": [],
-    "implemented_interface_members": [],
-    "thrown_exceptions": [
-      {
-        "exception_type": "InvalidPromoException",
-        "fully_qualified_exception_type": "com.example.orders.InvalidPromoException"
-      }
-    ],
-    "is_override": false,
-    "imported_types": [
-      "java.math.BigDecimal"
-    ],
-    "inheritance_hierarchy": [
-      "java.lang.Object"
-    ],
-    "language": "java"
-  },
-  {
-    "symbol_type": "method",
-    "name": "validate",
-    "qualified_name": "com.example.orders.BaseService.validate",
-    "namespace": "com.example.orders",
-    "modifiers": [
-      "protected"
-    ],
-    "annotations": [],
-    "parameters": [
-      {
-        "name": "promo",
-        "fully_qualified_type": "com.example.orders.Promo",
-        "type": "Promo"
-      }
-    ],
-    "return_type": {
-      "fully_qualified_type": "void",
-      "type": "void"
-    },
-    "documentation": {
-      "params": [],
-      "throws": []
-    },
-    "body_code": "{\n    if (promo \u003d\u003d null) {\n        throw new InvalidPromoException(\"unknown promo\");\n    }\n}",
-    "full_code": "protected void validate(Promo promo) throws InvalidPromoException {\n    if (promo \u003d\u003d null) {\n        throw new InvalidPromoException(\"unknown promo\");\n    }\n}",
-    "calls": [],
-    "line_span": {
-      "start_column": 5,
-      "start_line": 36,
-      "end_line": 40,
-      "end_column": 5
-    },
-    "inherits_from": [],
-    "implemented_interface_members": [],
-    "thrown_exceptions": [
-      {
-        "exception_type": "InvalidPromoException",
-        "fully_qualified_exception_type": "com.example.orders.InvalidPromoException"
-      }
-    ],
-    "is_override": false,
-    "imported_types": [
-      "java.math.BigDecimal"
-    ],
-    "inheritance_hierarchy": [
-      "java.lang.Object"
-    ],
-    "language": "java"
-  },
-  {
-    "symbol_type": "method",
-    "name": "applyDiscount",
-    "qualified_name": "com.example.orders.OrderService.applyDiscount",
-    "namespace": "com.example.orders",
-    "modifiers": [
-      "public"
-    ],
-    "annotations": [
-      {
-        "fully_qualified_name": "java.lang.Override",
-        "values": {},
-        "name": "Override"
-      },
-      {
-        "fully_qualified_name": "com.example.orders.Transactional",
-        "values": {
-          "readOnly": "false"
-        },
-        "name": "Transactional"
-      }
-    ],
-    "parameters": [
-      {
-        "name": "order",
-        "fully_qualified_type": "com.example.orders.Order",
-        "type": "Order"
-      },
-      {
-        "name": "code",
-        "fully_qualified_type": "java.lang.String",
-        "type": "String"
-      }
-    ],
-    "return_type": {
-      "fully_qualified_type": "java.math.BigDecimal",
-      "type": "BigDecimal"
-    },
-    "documentation": {
-      "summary": "Applies a promotional discount to an order.",
-      "raw": "Applies a promotional discount to an order.\n\n@param order the order to discount\n@param code the promo code to apply\n@return the new total after discount\n@throws InvalidPromoException if the code is expired\n",
-      "returns": "the new total after discount",
-      "params": [
-        {
-          "name": "order",
-          "description": "the order to discount"
-        },
-        {
-          "name": "code",
-          "description": "the promo code to apply"
-        }
+{
+  "schema_version": 2,
+  "file": "examples/OrderService.java",
+  "language": "java",
+  "imports": [
+    "java.math.BigDecimal"
+  ],
+  "top_level_comment": null,
+  "types": [
+    {
+      "name": "Transactional",
+      "qualified_name": "com.example.orders.Transactional",
+      "namespace": "com.example.orders",
+      "kind": "annotation",
+      "inherits_from": [],
+      "inheritance_hierarchy": [
+        "java.lang.annotation.Annotation"
       ],
-      "throws": [
+      "methods": []
+    },
+    {
+      "name": "InvalidPromoException",
+      "qualified_name": "com.example.orders.InvalidPromoException",
+      "namespace": "com.example.orders",
+      "kind": "class",
+      "inherits_from": [
+        "Exception"
+      ],
+      "inheritance_hierarchy": [
+        "java.lang.Exception",
+        "java.lang.Throwable",
+        "java.lang.Object",
+        "java.io.Serializable"
+      ],
+      "methods": []
+    },
+    {
+      "name": "Promo",
+      "qualified_name": "com.example.orders.Promo",
+      "namespace": "com.example.orders",
+      "kind": "class",
+      "inherits_from": [],
+      "inheritance_hierarchy": [
+        "java.lang.Object"
+      ],
+      "methods": [
         {
-          "exception_type": "InvalidPromoException",
-          "description": "if the code is expired"
+          "name": "getAmount",
+          "qualified_name": "com.example.orders.Promo.getAmount",
+          "modifiers": [],
+          "annotations": [],
+          "parameters": [],
+          "return_type": {
+            "type": "java.math.BigDecimal",
+            "resolved": true
+          },
+          "documentation": {
+            "summary": null,
+            "params": [],
+            "returns": null
+          },
+          "calls": [],
+          "line_span": {
+            "start_line": 16,
+            "start_column": 5,
+            "end_line": 18,
+            "end_column": 5
+          },
+          "thrown_exceptions": [],
+          "is_override": false,
+          "implemented_interface_members": [],
+          "data_provider_name": null,
+          "data_provider_source": null
         }
       ]
     },
-    "body_code": "{\n    Promo promo \u003d promoRepository.findByCode(code);\n    validate(promo);\n    return order.getTotal().subtract(promo.getAmount());\n}",
-    "full_code": "/**\n * Applies a promotional discount to an order.\n *\n * @param order the order to discount\n * @param code the promo code to apply\n * @return the new total after discount\n * @throws InvalidPromoException if the code is expired\n */\n@Override\n@Transactional(readOnly \u003d false)\npublic BigDecimal applyDiscount(Order order, String code) throws InvalidPromoException {\n    Promo promo \u003d promoRepository.findByCode(code);\n    validate(promo);\n    return order.getTotal().subtract(promo.getAmount());\n}",
-    "calls": [
-      {
-        "fully_qualified_callee_name": "com.example.orders.PromoRepository.findByCode(java.lang.String)",
-        "return_type": "com.example.orders.Promo",
-        "parameter_types": [
-          "java.lang.String"
-        ],
-        "callee_name": "findByCode",
-        "line_span": {
-          "start_column": 23,
-          "start_line": 58,
-          "end_line": 58,
-          "end_column": 54
+    {
+      "name": "Order",
+      "qualified_name": "com.example.orders.Order",
+      "namespace": "com.example.orders",
+      "kind": "class",
+      "inherits_from": [],
+      "inheritance_hierarchy": [
+        "java.lang.Object"
+      ],
+      "methods": [
+        {
+          "name": "getTotal",
+          "qualified_name": "com.example.orders.Order.getTotal",
+          "modifiers": [],
+          "annotations": [],
+          "parameters": [],
+          "return_type": {
+            "type": "java.math.BigDecimal",
+            "resolved": true
+          },
+          "documentation": {
+            "summary": null,
+            "params": [],
+            "returns": null
+          },
+          "calls": [],
+          "line_span": {
+            "start_line": 22,
+            "start_column": 5,
+            "end_line": 24,
+            "end_column": 5
+          },
+          "thrown_exceptions": [],
+          "is_override": false,
+          "implemented_interface_members": [],
+          "data_provider_name": null,
+          "data_provider_source": null
         }
-      },
-      {
-        "fully_qualified_callee_name": "com.example.orders.BaseService.validate(com.example.orders.Promo)",
-        "return_type": "void",
-        "parameter_types": [
-          "com.example.orders.Promo"
-        ],
-        "callee_name": "validate",
-        "line_span": {
-          "start_column": 9,
-          "start_line": 59,
-          "end_line": 59,
-          "end_column": 23
-        }
-      },
-      {
-        "fully_qualified_callee_name": "java.math.BigDecimal.subtract(java.math.BigDecimal)",
-        "return_type": "java.math.BigDecimal",
-        "parameter_types": [
-          "java.math.BigDecimal"
-        ],
-        "callee_name": "subtract",
-        "line_span": {
-          "start_column": 16,
-          "start_line": 60,
-          "end_line": 60,
-          "end_column": 59
-        }
-      },
-      {
-        "fully_qualified_callee_name": "com.example.orders.Order.getTotal()",
-        "return_type": "java.math.BigDecimal",
-        "parameter_types": [],
-        "callee_name": "getTotal",
-        "line_span": {
-          "start_column": 16,
-          "start_line": 60,
-          "end_line": 60,
-          "end_column": 31
-        }
-      },
-      {
-        "fully_qualified_callee_name": "com.example.orders.Promo.getAmount()",
-        "return_type": "java.math.BigDecimal",
-        "parameter_types": [],
-        "callee_name": "getAmount",
-        "line_span": {
-          "start_column": 42,
-          "start_line": 60,
-          "end_line": 60,
-          "end_column": 58
-        }
-      }
-    ],
-    "line_span": {
-      "start_column": 5,
-      "start_line": 55,
-      "end_line": 61,
-      "end_column": 5
+      ]
     },
-    "inherits_from": [
-      "BaseService"
-    ],
-    "implemented_interface_members": [],
-    "thrown_exceptions": [
-      {
-        "exception_type": "InvalidPromoException",
-        "fully_qualified_exception_type": "com.example.orders.InvalidPromoException"
-      }
-    ],
-    "is_override": true,
-    "imported_types": [
-      "java.math.BigDecimal"
-    ],
-    "inheritance_hierarchy": [
-      "com.example.orders.BaseService",
-      "java.lang.Object"
-    ],
-    "language": "java"
-  }
-]
+    {
+      "name": "PromoRepository",
+      "qualified_name": "com.example.orders.PromoRepository",
+      "namespace": "com.example.orders",
+      "kind": "class",
+      "inherits_from": [],
+      "inheritance_hierarchy": [
+        "java.lang.Object"
+      ],
+      "methods": [
+        {
+          "name": "findByCode",
+          "qualified_name": "com.example.orders.PromoRepository.findByCode",
+          "modifiers": [],
+          "annotations": [],
+          "parameters": [
+            {
+              "name": "code",
+              "type": "java.lang.String",
+              "resolved": true
+            }
+          ],
+          "return_type": {
+            "type": "com.example.orders.Promo",
+            "resolved": true
+          },
+          "documentation": {
+            "summary": null,
+            "params": [],
+            "returns": null
+          },
+          "calls": [],
+          "line_span": {
+            "start_line": 28,
+            "start_column": 5,
+            "end_line": 30,
+            "end_column": 5
+          },
+          "thrown_exceptions": [],
+          "is_override": false,
+          "implemented_interface_members": [],
+          "data_provider_name": null,
+          "data_provider_source": null
+        }
+      ]
+    },
+    {
+      "name": "BaseService",
+      "qualified_name": "com.example.orders.BaseService",
+      "namespace": "com.example.orders",
+      "kind": "class",
+      "inherits_from": [],
+      "inheritance_hierarchy": [
+        "java.lang.Object"
+      ],
+      "methods": [
+        {
+          "name": "applyDiscount",
+          "qualified_name": "com.example.orders.BaseService.applyDiscount",
+          "modifiers": [
+            "abstract"
+          ],
+          "annotations": [],
+          "parameters": [
+            {
+              "name": "order",
+              "type": "com.example.orders.Order",
+              "resolved": true
+            },
+            {
+              "name": "code",
+              "type": "java.lang.String",
+              "resolved": true
+            }
+          ],
+          "return_type": {
+            "type": "java.math.BigDecimal",
+            "resolved": true
+          },
+          "documentation": {
+            "summary": null,
+            "params": [],
+            "returns": null
+          },
+          "calls": [],
+          "line_span": {
+            "start_line": 34,
+            "start_column": 5,
+            "end_line": 34,
+            "end_column": 93
+          },
+          "thrown_exceptions": [
+            {
+              "type": "com.example.orders.InvalidPromoException",
+              "resolved": true,
+              "sources": [
+                "signature"
+              ],
+              "description": null
+            }
+          ],
+          "is_override": false,
+          "implemented_interface_members": [],
+          "data_provider_name": null,
+          "data_provider_source": null
+        },
+        {
+          "name": "validate",
+          "qualified_name": "com.example.orders.BaseService.validate",
+          "modifiers": [
+            "protected"
+          ],
+          "annotations": [],
+          "parameters": [
+            {
+              "name": "promo",
+              "type": "com.example.orders.Promo",
+              "resolved": true
+            }
+          ],
+          "return_type": {
+            "type": "void",
+            "resolved": true
+          },
+          "documentation": {
+            "summary": null,
+            "params": [],
+            "returns": null
+          },
+          "calls": [],
+          "line_span": {
+            "start_line": 36,
+            "start_column": 5,
+            "end_line": 40,
+            "end_column": 5
+          },
+          "thrown_exceptions": [
+            {
+              "type": "com.example.orders.InvalidPromoException",
+              "resolved": true,
+              "sources": [
+                "signature"
+              ],
+              "description": null
+            }
+          ],
+          "is_override": false,
+          "implemented_interface_members": [],
+          "data_provider_name": null,
+          "data_provider_source": null
+        }
+      ]
+    },
+    {
+      "name": "OrderService",
+      "qualified_name": "com.example.orders.OrderService",
+      "namespace": "com.example.orders",
+      "kind": "class",
+      "inherits_from": [
+        "BaseService"
+      ],
+      "inheritance_hierarchy": [
+        "com.example.orders.BaseService",
+        "java.lang.Object"
+      ],
+      "methods": [
+        {
+          "name": "applyDiscount",
+          "qualified_name": "com.example.orders.OrderService.applyDiscount",
+          "modifiers": [
+            "public"
+          ],
+          "annotations": [
+            {
+              "name": "Override",
+              "qualified_name": "java.lang.Override",
+              "values": {}
+            },
+            {
+              "name": "Transactional",
+              "qualified_name": "com.example.orders.Transactional",
+              "values": {
+                "readOnly": "false"
+              }
+            }
+          ],
+          "parameters": [
+            {
+              "name": "order",
+              "type": "com.example.orders.Order",
+              "resolved": true
+            },
+            {
+              "name": "code",
+              "type": "java.lang.String",
+              "resolved": true
+            }
+          ],
+          "return_type": {
+            "type": "java.math.BigDecimal",
+            "resolved": true
+          },
+          "documentation": {
+            "summary": "Applies a promotional discount to an order.",
+            "params": [
+              {
+                "name": "order",
+                "description": "the order to discount"
+              },
+              {
+                "name": "code",
+                "description": "the promo code to apply"
+              }
+            ],
+            "returns": "the new total after discount"
+          },
+          "calls": [
+            {
+              "target": "com.example.orders.PromoRepository.findByCode(java.lang.String)",
+              "return_type": "com.example.orders.Promo",
+              "resolved": true,
+              "count": 1,
+              "line_spans": [
+                {
+                  "start_line": 58,
+                  "start_column": 23,
+                  "end_line": 58,
+                  "end_column": 54
+                }
+              ]
+            },
+            {
+              "target": "com.example.orders.BaseService.validate(com.example.orders.Promo)",
+              "return_type": "void",
+              "resolved": true,
+              "count": 1,
+              "line_spans": [
+                {
+                  "start_line": 59,
+                  "start_column": 9,
+                  "end_line": 59,
+                  "end_column": 23
+                }
+              ]
+            },
+            {
+              "target": "java.math.BigDecimal.subtract(java.math.BigDecimal)",
+              "return_type": "java.math.BigDecimal",
+              "resolved": true,
+              "count": 1,
+              "line_spans": [
+                {
+                  "start_line": 60,
+                  "start_column": 16,
+                  "end_line": 60,
+                  "end_column": 59
+                }
+              ]
+            },
+            {
+              "target": "com.example.orders.Order.getTotal()",
+              "return_type": "java.math.BigDecimal",
+              "resolved": true,
+              "count": 1,
+              "line_spans": [
+                {
+                  "start_line": 60,
+                  "start_column": 16,
+                  "end_line": 60,
+                  "end_column": 31
+                }
+              ]
+            },
+            {
+              "target": "com.example.orders.Promo.getAmount()",
+              "return_type": "java.math.BigDecimal",
+              "resolved": true,
+              "count": 1,
+              "line_spans": [
+                {
+                  "start_line": 60,
+                  "start_column": 42,
+                  "end_line": 60,
+                  "end_column": 58
+                }
+              ]
+            }
+          ],
+          "line_span": {
+            "start_line": 55,
+            "start_column": 5,
+            "end_line": 61,
+            "end_column": 5
+          },
+          "thrown_exceptions": [
+            {
+              "type": "com.example.orders.InvalidPromoException",
+              "resolved": true,
+              "sources": [
+                "signature",
+                "javadoc"
+              ],
+              "description": "if the code is expired"
+            }
+          ],
+          "is_override": true,
+          "implemented_interface_members": [],
+          "data_provider_name": null,
+          "data_provider_source": null
+        }
+      ]
+    }
+  ]
+}

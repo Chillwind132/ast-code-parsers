@@ -7,6 +7,9 @@ set -euo pipefail
 #
 # Requires both parsers to be built first:
 #   (cd java && ./build.sh) && (cd csharp && ./build.sh)
+#
+# The flags here must match the ones in .github/workflows/ci.yml, which diffs
+# live output against these files.
 
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -23,16 +26,14 @@ if [[ ! -x "$CSBIN" ]]; then
   exit 1
 fi
 
-echo "==> examples/OrderService.java.output.json"
-cat examples/OrderService.java | java -jar "$JAR" > examples/OrderService.java.output.json
+for name in OrderService Nesting; do
+  echo "==> examples/$name.java.output.json"
+  cat "examples/$name.java" \
+    | java -jar "$JAR" --pretty --file "examples/$name.java" > "examples/$name.java.output.json"
 
-echo "==> examples/OrderService.cs.output.json"
-cat examples/OrderService.cs | "$CSBIN" > examples/OrderService.cs.output.json
-
-echo "==> examples/Nesting.java.output.json"
-cat examples/Nesting.java | java -jar "$JAR" > examples/Nesting.java.output.json
-
-echo "==> examples/Nesting.cs.output.json"
-cat examples/Nesting.cs | "$CSBIN" > examples/Nesting.cs.output.json
+  echo "==> examples/$name.cs.output.json"
+  cat "examples/$name.cs" \
+    | "$CSBIN" --pretty --file "examples/$name.cs" > "examples/$name.cs.output.json"
+done
 
 echo "==> Done. Review the diff with: git diff examples/"

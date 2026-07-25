@@ -8,7 +8,7 @@
 
 A collection of code parsers that use **native language ASTs** to provide the highest quality of semantic extraction, compared to language-agnostic tools like tree-sitter.
 
-Each parser is a standalone CLI that reads source code on **stdin** and writes a JSON array of method-level metadata to **stdout**. Both parsers emit the *same schema*, so downstream consumers (RAG indexers, code search, call-graph analysis, documentation generators) can treat Java and C# uniformly.
+Each parser is a standalone CLI that reads source code on **stdin** and writes a JSON document describing the file, its types and their methods to **stdout**. Both parsers emit the *same schema*, so downstream consumers (RAG indexers, code search, call-graph analysis, documentation generators) can treat Java and C# uniformly.
 
 | Language | Parser backend | Source |
 | --- | --- | --- |
@@ -53,214 +53,186 @@ public class OrderService extends BaseService {
 ```
 
 ```bash
-cat examples/OrderService.java | java -jar java/JavaCodeParser_Full.jar
+cat examples/OrderService.java \
+  | java -jar java/JavaCodeParser_Full.jar --pretty --file examples/OrderService.java
 ```
 
 ### Output
 
-The parser emits one object per method. Showing the `applyDiscount` entry, with `documentation`, `body_code` and `full_code` elided for length — the complete document is in [`examples/OrderService.java.output.json`](examples/OrderService.java.output.json).
+One document per file: file-level context once, then a type per declaration, then the methods. Showing the `OrderService` type with only `applyDiscount` — the complete document is in [`examples/OrderService.java.output.json`](examples/OrderService.java.output.json).
 
 ```json
 {
-  "symbol_type": "method",
-  "name": "applyDiscount",
-  "qualified_name": "com.example.orders.OrderService.applyDiscount",
-  "namespace": "com.example.orders",
-  "modifiers": [
-    "public"
-  ],
-  "annotations": [
+  "schema_version": 2,
+  "file": "examples/OrderService.java",
+  "language": "java",
+  "imports": ["java.math.BigDecimal"],
+  "top_level_comment": null,
+  "types": [
     {
-      "name": "Override",
-      "fully_qualified_name": "java.lang.Override",
-      "values": {}
-    },
-    {
-      "name": "Transactional",
-      "fully_qualified_name": "com.example.orders.Transactional",
-      "values": {
-        "readOnly": "false"
-      }
+      "name": "OrderService",
+      "qualified_name": "com.example.orders.OrderService",
+      "namespace": "com.example.orders",
+      "kind": "class",
+      "inherits_from": ["BaseService"],
+      "inheritance_hierarchy": ["com.example.orders.BaseService", "java.lang.Object"],
+      "methods": [
+        {
+          "name": "applyDiscount",
+          "qualified_name": "com.example.orders.OrderService.applyDiscount",
+          "modifiers": ["public"],
+          "annotations": [
+            { "name": "Override", "qualified_name": "java.lang.Override", "values": {} },
+            {
+              "name": "Transactional",
+              "qualified_name": "com.example.orders.Transactional",
+              "values": { "readOnly": "false" }
+            }
+          ],
+          "parameters": [
+            { "name": "order", "type": "com.example.orders.Order", "resolved": true },
+            { "name": "code", "type": "java.lang.String", "resolved": true }
+          ],
+          "return_type": { "type": "java.math.BigDecimal", "resolved": true },
+          "documentation": {
+            "summary": "Applies a promotional discount to an order.",
+            "params": [
+              { "name": "order", "description": "the order to discount" },
+              { "name": "code", "description": "the promo code to apply" }
+            ],
+            "returns": "the new total after discount"
+          },
+          "calls": [
+            {
+              "target": "com.example.orders.PromoRepository.findByCode(java.lang.String)",
+              "return_type": "com.example.orders.Promo",
+              "resolved": true,
+              "count": 1,
+              "line_spans": [
+                { "start_line": 58, "start_column": 23, "end_line": 58, "end_column": 54 }
+              ]
+            }
+          ],
+          "line_span": { "start_line": 55, "start_column": 5, "end_line": 61, "end_column": 5 },
+          "thrown_exceptions": [
+            {
+              "type": "com.example.orders.InvalidPromoException",
+              "resolved": true,
+              "sources": ["signature", "javadoc"],
+              "description": "if the code is expired"
+            }
+          ],
+          "is_override": true,
+          "implemented_interface_members": [],
+          "data_provider_name": null,
+          "data_provider_source": null
+        }
+      ]
     }
-  ],
-  "parameters": [
-    {
-      "name": "order",
-      "type": "Order",
-      "fully_qualified_type": "com.example.orders.Order"
-    },
-    {
-      "name": "code",
-      "type": "String",
-      "fully_qualified_type": "java.lang.String"
-    }
-  ],
-  "return_type": {
-    "type": "BigDecimal",
-    "fully_qualified_type": "java.math.BigDecimal"
-  },
-  "documentation": {
-    "summary": "Applies a promotional discount to an order.",
-    "params": [
-      {
-        "name": "order",
-        "description": "the order to discount"
-      },
-      {
-        "name": "code",
-        "description": "the promo code to apply"
-      }
-    ],
-    "returns": "the new total after discount",
-    "throws": [
-      {
-        "exception_type": "InvalidPromoException",
-        "description": "if the code is expired"
-      }
-    ]
-  },
-  "calls": [
-    {
-      "callee_name": "findByCode",
-      "fully_qualified_callee_name": "com.example.orders.PromoRepository.findByCode(java.lang.String)",
-      "return_type": "com.example.orders.Promo",
-      "parameter_types": [
-        "java.lang.String"
-      ],
-      "line_span": {
-        "start_line": 58,
-        "start_column": 23,
-        "end_line": 58,
-        "end_column": 54
-      }
-    },
-    {
-      "callee_name": "subtract",
-      "fully_qualified_callee_name": "java.math.BigDecimal.subtract(java.math.BigDecimal)",
-      "return_type": "java.math.BigDecimal",
-      "parameter_types": [
-        "java.math.BigDecimal"
-      ],
-      "line_span": {
-        "start_line": 60,
-        "start_column": 16,
-        "end_line": 60,
-        "end_column": 59
-      }
-    }
-  ],
-  "line_span": {
-    "start_line": 55,
-    "start_column": 5,
-    "end_line": 61,
-    "end_column": 5
-  },
-  "inherits_from": [
-    "BaseService"
-  ],
-  "inheritance_hierarchy": [
-    "com.example.orders.BaseService",
-    "java.lang.Object"
-  ],
-  "thrown_exceptions": [
-    {
-      "exception_type": "InvalidPromoException",
-      "fully_qualified_exception_type": "com.example.orders.InvalidPromoException"
-    }
-  ],
-  "is_override": true,
-  "imported_types": [
-    "java.math.BigDecimal"
-  ],
-  "language": "java"
+  ]
 }
 ```
 
-Note what a syntax-only parser could not have given you: `String` resolved to `java.lang.String`, every call site bound to its declaring type and return type, the `readOnly` annotation argument as a key-value pair, the Javadoc split into `summary` / `params` / `returns` / `throws`, and `is_override` confirmed against the base class rather than inferred from the annotation.
+Note what a syntax-only parser could not have given you: `String` resolved to `java.lang.String`, every call site bound to its declaring type and return type with parameter types included, the `readOnly` annotation argument as a key-value pair, the Javadoc split into `summary` / `params` / `returns`, the `throws` clause and its `@throws` tag merged into one entry that records both sources, and `is_override` confirmed against the base class rather than inferred from the annotation.
 
 ### The same method in C#
 
 `examples/OrderService.cs` is the direct equivalent, and the output uses identical field names:
 
 ```bash
-cat examples/OrderService.cs | csharp/linux-x64/CSharpCodeParser
+cat examples/OrderService.cs \
+  | csharp/linux-x64/CSharpCodeParser --pretty --file examples/OrderService.cs
 ```
 
 ```json
 {
-  "symbol_type": "method",
   "name": "ApplyDiscount",
   "qualified_name": "Example.Orders.OrderService.ApplyDiscount",
-  "namespace": "Example.Orders",
-  "modifiers": [
-    "public",
-    "override"
+  "modifiers": ["public", "override"],
+  "annotations": [
+    {
+      "name": "Transactional",
+      "qualified_name": "Example.Orders.TransactionalAttribute",
+      "values": { "ReadOnly": "false" }
+    }
   ],
   "parameters": [
-    {
-      "name": "order",
-      "type": "Order",
-      "fully_qualified_type": "Example.Orders.Order"
-    },
-    {
-      "name": "code",
-      "type": "string",
-      "fully_qualified_type": "System.String"
-    }
+    { "name": "order", "type": "Example.Orders.Order", "resolved": true },
+    { "name": "code", "type": "System.String", "resolved": true }
   ],
-  "return_type": {
-    "type": "decimal",
-    "fully_qualified_type": "System.Decimal"
-  },
+  "return_type": { "type": "System.Decimal", "resolved": true },
   "calls": [
     {
-      "callee_name": "FindByCode",
-      "fully_qualified_callee_name": "Example.Orders.PromoRepository.FindByCode",
+      "target": "Example.Orders.PromoRepository.FindByCode(System.String)",
       "return_type": "Example.Orders.Promo",
-      "parameter_types": [
-        "System.String"
-      ],
-      "line_span": {
-        "start_line": 49,
-        "start_column": 27,
-        "end_line": 49,
-        "end_column": 60
-      }
+      "resolved": true,
+      "count": 1,
+      "line_spans": [
+        { "start_line": 49, "start_column": 27, "end_line": 49, "end_column": 60 }
+      ]
     }
   ],
-  "is_override": true,
-  "language": "csharp"
+  "is_override": true
 }
 ```
 
 Full document: [`examples/OrderService.cs.output.json`](examples/OrderService.cs.output.json).
 
+[`examples/Nesting.java`](examples/Nesting.java) and [`examples/Nesting.cs`](examples/Nesting.cs) cover the naming cases that are easy to get wrong: nested types, enums, records, and C# file-scoped namespaces.
+
 ---
 
 ## Output schema
 
-Every element of the output array describes one method.
+The document describes one file.
 
 | Field | Description |
 | --- | --- |
-| `symbol_type` | Always `method` |
-| `name`, `qualified_name`, `namespace` | Identity, fully qualified where resolvable |
+| `schema_version` | `2`. Incremented when a field is renamed, removed, or changes meaning |
+| `file` | Whatever was passed to `--file`, else `null`. Consumers use it to build node ids |
+| `language` | `java` or `csharp` |
+| `imports` | Import / using declarations |
+| `top_level_comment` | File header comment, if any |
+| `types` | One entry per type declaration, including nested ones |
+
+Each entry in `types`:
+
+| Field | Description |
+| --- | --- |
+| `name`, `qualified_name`, `namespace` | Identity. Nested types are named `Outer.Inner` |
+| `kind` | `class`, `interface`, `struct`, `enum`, `record`, or `annotation` |
+| `inherits_from` | Supertypes as written in the declaration |
+| `inheritance_hierarchy` | Resolved ancestors, up to `java.lang.Object` / `System.Object` |
+| `methods` | Method declarations of this type only; a nested type's methods live under its own entry |
+
+Each entry in `methods`:
+
+| Field | Description |
+| --- | --- |
+| `name`, `qualified_name` | Identity |
 | `modifiers` | `public`, `static`, `async`, `final`, ... |
 | `annotations` | Annotations / attributes with qualified names and key-value arguments |
-| `parameters` | Name, declared type, and fully qualified type per parameter |
-| `return_type` | Declared and fully qualified return type |
-| `documentation` | `summary`, `params`, `returns`, `throws`, `raw` |
-| `body_code`, `full_code` | Body-only snippet and the full method text including doc comment |
-| `calls` | Invocations in the body, with resolved callee, return type, parameter types, and line/column span |
+| `parameters` | Name, qualified type, and `resolved` per parameter |
+| `return_type` | Qualified type and `resolved` |
+| `documentation` | `summary`, `params`, `returns` |
+| `calls` | Invocations grouped by `target`, with `return_type`, `resolved`, `count`, and a `line_spans` entry per call site |
 | `line_span` | Start and end line/column of the method |
-| `inherits_from`, `inheritance_hierarchy` | Declared supertypes, and the resolved chain to `java.lang.Object` |
+| `thrown_exceptions` | Merged from the `throws` clause and the doc comment, with `sources` recording which mentioned it |
 | `implemented_interface_members`, `is_override` | Compiler-resolved override information |
-| `thrown_exceptions` | Declared `throws` clause (Java) |
-| `imported_types`, `top_level_comment` | File-level context |
 | `data_provider_name`, `data_provider_source` | TestNG `@DataProvider` linkage for `@Test` methods (Java) |
-| `language` | `java` or `csharp` |
+| `full_code`, `body_offset` | Only under `--include-source`. See below |
 
-Fields that a given language cannot express are present but empty, so consumers never need to branch on language.
+Fields that a given language cannot express are present but `null` or empty, so consumers never need to branch on language.
+
+### Resolution is explicit
+
+Every type reference carries a `resolved` boolean. When symbol resolution succeeds, `type` is fully qualified; when it fails, `type` falls back to the name as written and `resolved` is `false`. A consumer can therefore tell a genuine `java.lang.String` from an unresolvable `Foo`, instead of guessing from whether the string contains a dot.
+
+Call targets always carry parameter types — `Type.method(java.lang.String)` — so overloads remain distinct nodes in a call graph.
+
+### Reconstructing source
+
+`full_code` is omitted by default. Under `--include-source` it holds the exact text that `line_span` selects, and `body_offset` is the index into `full_code` where the body starts. Because the span and the text agree by construction, a consumer that has the original file can skip `full_code` entirely and slice the span itself.
 
 ---
 
@@ -317,12 +289,20 @@ To save the result instead of printing it, add `> methods.json` to the end of an
 
 Both parsers read a single compilation unit per run, so batching across a repository is left to the caller — spawn one process per file, or keep a worker pool if throughput matters.
 
+### Options
+
+| Flag | Effect |
+| --- | --- |
+| `--file <path>` | Record `<path>` in the `file` field. Nothing is read from disk; this is the identity the caller wants in the output |
+| `--include-source` | Also emit `full_code` and `body_offset` per method |
+| `--pretty` | Indent the JSON. Off by default — indentation is most of the payload on a real file |
+
 ### Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | `0` | Parsed cleanly. |
-| `2` | The input has syntax errors, described on stderr. Java cannot recover and prints `[]`; C# error-recovers and still prints what it found, which may be incomplete. |
+| `2` | The input has syntax errors, described on stderr. Java cannot recover and emits a document with no types; C# error-recovers and still emits what it found, which may be incomplete. |
 
 stdout is always valid JSON, so a batch indexer can consume the output and use the exit code to decide whether to trust it.
 

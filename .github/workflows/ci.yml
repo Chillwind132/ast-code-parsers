@@ -26,7 +26,7 @@ jobs:
         run: |
           for name in OrderService Nesting; do
             cat "examples/$name.java" \
-              | java -jar java/JavaCodeParser_Full.jar > actual.json
+              | java -jar java/JavaCodeParser_Full.jar --pretty --file "examples/$name.java" > actual.json
             diff -u "examples/$name.java.output.json" actual.json
           done
 
@@ -48,6 +48,6 @@ jobs:
         run: |
           for name in OrderService Nesting; do
             cat "examples/$name.cs" \
-              | ./csharp/linux-x64/CSharpCodeParser > actual.json
+              | ./csharp/linux-x64/CSharpCodeParser --pretty --file "examples/$name.cs" > actual.json
             diff -u "examples/$name.cs.output.json" actual.json
           done

@@ -1,5 +1,5 @@
 // ============================================================================
-// JavaCodeParser - Java Method Metadata Extractor for RAG Indexing
+// JavaCodeParser - Java Code Metadata Extractor for RAG Indexing
 // ============================================================================
 //
 // OVERVIEW
@@ -7,44 +7,36 @@
 // This parser extracts rich semantic metadata from Java source code for use in
 // RAG-based code search, retrieval and static analysis pipelines. It uses the
 // JavaParser library with symbol solving to parse Java code from stdin and
-// outputs a JSON array of method metadata objects to stdout. The output schema is
-// designed to be consistent with the companion CSharpCodeParser for cross-language
-// code search.
+// outputs a JSON document describing the file, its types and their methods to
+// stdout. The output schema is identical to the companion CSharpCodeParser for
+// cross-language code search.
 //
 // USAGE
 // -----
-// Pipe Java source code to stdin; receive JSON method metadata on stdout:
+// Pipe Java source code to stdin; receive JSON on stdout:
 //   cat MyClass.java | java -jar JavaCodeParser.jar > methods.json
+//
+//   --file <path>       record <path> in the "file" field; consumers use it for node ids
+//   --include-source    also emit full_code and body_offset per method
+//   --pretty            indent the JSON; off by default, since indentation is most of the payload
+//
+// Exit codes: 0 parsed cleanly, 2 the input could not be parsed (described on
+// stderr; an empty document is still emitted).
 //
 // BUILD INSTRUCTIONS
 // ------------------
 // Run ./build.sh (or build.ps1 on Windows) from the java/ directory.
 // The resulting fat JAR includes all dependencies for standalone execution.
 //
-// EXTRACTED METADATA
-// ------------------
-// For each method in the source file, the parser extracts:
-//   - Identity:       Method name, qualified name, package, containing class/interface/enum/record
-//   - Signature:      Return type, parameters (with fully qualified types when resolvable)
-//   - Modifiers:      Access level, static, final, synchronized, etc.
-//   - Annotations:    All applied annotations (names, qualified names, key-value pairs)
-//   - Documentation:  Javadoc comments (summary, @param, @return, @throws tags, raw text)
-//   - Source Code:    Full method text and body-only snippet
-//   - Inheritance:    Base types, interface implementations, override detection, full hierarchy
-//   - Call Graph:     Method invocations within the body (callee, types, positions)
-//   - Exceptions:     Declared thrown exceptions (with fully qualified types)
-//   - Location:       Line/column spans for precise source mapping
-//   - Imports:        All import declarations from the compilation unit
-//   - TestNG:         DataProvider linkage for @Test methods referencing @DataProvider
-//
 // OUTPUT FORMAT
 // -------------
-// JSON array where each element represents one method with fields including:
-// symbol_type, name, qualified_name, namespace, modifiers, annotations,
-// parameters, return_type, documentation, body_code, full_code, calls,
-// line_span, inherits_from, implemented_interface_members, thrown_exceptions,
-// is_override, data_provider_name, data_provider_source, imported_types,
-// top_level_comment, inheritance_hierarchy, language
+// A single JSON object:
+//   { schema_version, file, language, imports, top_level_comment, types: [
+//       { name, qualified_name, namespace, kind, inherits_from,
+//         inheritance_hierarchy, methods: [ ... ] } ] }
+//
+// Every type reference carries an explicit "resolved" flag, so a consumer can
+// tell a fully qualified name from a fallback to the name as written.
 //
 // DEPENDENCIES
 // ------------
@@ -56,10 +48,11 @@
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.ParserConfiguration;
+import com.github.javaparser.Position;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.*;
-import com.github.javaparser.ast.comments.JavadocComment;
+import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
@@ -89,30 +82,55 @@ import java.util.stream.Collectors;
 /**
  * JavaCodeParser
  * -------------
- * Updated to produce standardized JSON output for RAG.
+ * Produces the v2 nested envelope: one file, many types, many methods per type.
  */
 public class JavaCodeParser {
 
+    private static final int SCHEMA_VERSION = 2;
+
+    /** Exit code used when the input could not be parsed at all. */
+    private static final int EXIT_PARSE_FAILED = 2;
+
+    // System.out follows the platform charset, which mangles non-ASCII identifiers on Windows.
+    // JSON is UTF-8 by definition, so write it as such regardless of host.
+    private static final PrintStream OUT =
+            new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
+    private static final PrintStream ERR =
+            new PrintStream(new FileOutputStream(FileDescriptor.err), true, StandardCharsets.UTF_8);
+
+    private static String filePath;
+    private static boolean includeSource;
+    private static boolean pretty;
+
+    /** Source text and its line offsets, used to slice full_code exactly as line_span selects it. */
+    private static String sourceText;
+    private static int[] lineStarts;
+
+    static class TypeInfo {
+        String name;
+        String qualifiedName;
+        String namespaceName;
+        String kind;
+        List<String> inheritsFrom = new ArrayList<>();
+        List<String> inheritanceHierarchy = new ArrayList<>();
+        List<MethodInfo> methods = new ArrayList<>();
+    }
+
     static class MethodInfo {
         String name;
+        String qualifiedName;
         String returnType;
-        String fullyQualifiedReturnType;
+        boolean returnTypeResolved;
         List<ParameterInfo> parameters = new ArrayList<>();
         List<String> modifiers = new ArrayList<>();
         List<AnnotationInfo> annotations = new ArrayList<>();
-        String namespaceName;
-        String className;
-        List<String> classBaseTypes = new ArrayList<>();
-        XmlDocInfo xmlDoc = new XmlDocInfo();
-        String code;
+        JavadocInfo javadoc = new JavadocInfo();
         String fullCode;
+        Integer bodyOffset;
         Boolean isOverride;
         List<String> implementedInterfaceMembers = new ArrayList<>();
         List<CallInfo> calls = new ArrayList<>();
         LineSpan lineSpan;
-        List<String> importedTypes = new ArrayList<>();
-        String topComment;
-        List<String> inheritanceHierarchy = new ArrayList<>();
         List<ThrownExceptionInfo> thrownExceptions = new ArrayList<>();
 
         String dataProviderName;
@@ -122,44 +140,46 @@ public class JavaCodeParser {
     static class ParameterInfo {
         String name;
         String type;
-        String fullyQualifiedType;
+        boolean resolved;
     }
 
     static class AnnotationInfo {
         String name;
-        String fullyQualifiedName;
-        Map<String, String> values = new HashMap<>();
+        String qualifiedName;
+        Map<String, String> values = new LinkedHashMap<>();
     }
 
-    static class XmlDocInfo {
+    static class JavadocInfo {
         String summary;
         String returns;
-        List<XmlParam> params = new ArrayList<>();
-        List<XmlThrows> throwsList = new ArrayList<>();
-        String raw;
+        List<JavadocParam> params = new ArrayList<>();
+        List<JavadocThrows> throwsList = new ArrayList<>();
     }
 
-    static class XmlParam {
+    static class JavadocParam {
         String name;
         String description;
     }
 
-    static class XmlThrows {
+    static class JavadocThrows {
         String exceptionType;
         String description;
     }
 
+    /** One call target, with every site that reaches it. */
     static class CallInfo {
-        String calleeName;
-        String fullyQualifiedCalleeName;
+        String target;
         String returnType;
-        List<String> parameterTypes;
-        LineSpan lineSpan;
+        boolean resolved;
+        int count;
+        List<LineSpan> lineSpans = new ArrayList<>();
     }
 
     static class ThrownExceptionInfo {
-        String exceptionType;
-        String fullyQualifiedExceptionType;
+        String type;
+        boolean resolved;
+        List<String> sources = new ArrayList<>();
+        String description;
     }
 
     static class LineSpan {
@@ -169,23 +189,22 @@ public class JavaCodeParser {
         int endColumn;
     }
 
-    // System.out follows the platform charset, which mangles non-ASCII identifiers on Windows.
-    // JSON is UTF-8 by definition, so write it as such regardless of host.
-    private static final PrintStream OUT =
-            new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
-    private static final PrintStream ERR =
-            new PrintStream(new FileOutputStream(FileDescriptor.err), true, StandardCharsets.UTF_8);
-
-    /** Exit code used when the input could not be parsed at all. */
-    private static final int EXIT_PARSE_FAILED = 2;
-
     public static void main(String[] args) throws Exception {
-        String sourceRoot = "src";
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].equals("--file") && i + 1 < args.length) {
+                filePath = args[++i];
+            } else if (args[i].equals("--include-source")) {
+                includeSource = true;
+            } else if (args[i].equals("--pretty")) {
+                pretty = true;
+            }
+        }
+
         CombinedTypeSolver typeSolver = new CombinedTypeSolver();
         typeSolver.add(new ReflectionTypeSolver());
-        // Only add JavaParserTypeSolver if the src directory exists
-        // When parsing standalone code from stdin, no source tree is available
-        Path srcPath = Paths.get(sourceRoot);
+        // Only add JavaParserTypeSolver if the src directory exists.
+        // When parsing standalone code from stdin, no source tree is available.
+        Path srcPath = Paths.get("src");
         if (Files.isDirectory(srcPath)) {
             typeSolver.add(new JavaParserTypeSolver(srcPath));
         }
@@ -201,23 +220,21 @@ public class JavaCodeParser {
         while ((line = reader.readLine()) != null) {
             sb.append(line).append("\n");
         }
-        String codeInput = sb.toString();
+        sourceText = sb.toString();
+        lineStarts = computeLineStarts(sourceText);
 
         CompilationUnit cu;
         try {
-            cu = StaticJavaParser.parse(codeInput);
+            cu = StaticJavaParser.parse(sourceText);
         } catch (ParseProblemException e) {
-            // A batch indexer should get an empty result plus a readable reason, not a stack trace
-            // on stdout's sibling channel and nothing to consume.
-            OUT.println("[]");
+            // A batch indexer should get an empty document plus a readable reason, not a stack
+            // trace on stderr and nothing to consume.
+            emit(buildDocument(Collections.emptyList(), Collections.emptyList(), null));
             e.getProblems().forEach(p -> ERR.println("JavaCodeParser: " + p.getMessage().split("\n")[0]));
-            OUT.flush();
             ERR.flush();
             System.exit(EXIT_PARSE_FAILED);
             return;
         }
-
-        List<MethodInfo> results = new ArrayList<>();
 
         String packageName = cu.getPackageDeclaration().map(pd -> pd.getNameAsString()).orElse(null);
 
@@ -225,131 +242,139 @@ public class JavaCodeParser {
                 .map(ImportDeclaration::getNameAsString)
                 .collect(Collectors.toList());
 
-        String topComment = cu.getComment()
-                .filter(JavadocComment.class::isInstance)
-                .map(JavadocComment.class::cast)
-                .map(JavadocComment::parse)
-                .map(JavaCodeParser::extractAllJavadocInfoAsRaw)
-                .orElse(null);
-
+        List<TypeInfo> types = new ArrayList<>();
         for (TypeDeclaration<?> typeDecl : cu.getTypes()) {
-            processTypeDeclaration(typeDecl, packageName, null, results, imports, topComment);
+            processTypeDeclaration(typeDecl, packageName, null, types);
         }
 
-        linkDataProviders(results);
+        linkDataProviders(types);
 
-        List<Map<String, Object>> finalJsonList = new ArrayList<>();
-        for (MethodInfo mi : results) {
-            finalJsonList.add(methodInfoToJsonMap(mi));
+        emit(buildDocument(imports, types, extractTopLevelComment(cu)));
+    }
+
+    private static void emit(Map<String, Object> document) {
+        // Indentation is most of the payload on a real file, so it is opt-in. Nulls are always
+        // written: a consumer should never have to distinguish "absent" from "unresolved".
+        GsonBuilder builder = new GsonBuilder().serializeNulls();
+        if (pretty) {
+            builder.setPrettyPrinting();
         }
-
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        String jsonOutput = gson.toJson(finalJsonList);
-        OUT.println(jsonOutput);
+        OUT.println(builder.create().toJson(document));
         OUT.flush();
     }
 
-    /**
-     * JavaParser's printer and Javadoc reader both emit the platform line separator, which would
-     * make the same input produce different output on Windows and Linux.
-     */
-    private static String normalizeEol(String text) {
-        return text == null ? null : text.replace("\r\n", "\n").replace("\r", "\n");
+    private static Map<String, Object> buildDocument(List<String> imports, List<TypeInfo> types, String topComment) {
+        Map<String, Object> document = new LinkedHashMap<>();
+        document.put("schema_version", SCHEMA_VERSION);
+        document.put("file", filePath);
+        document.put("language", "java");
+        document.put("imports", imports);
+        document.put("top_level_comment", topComment);
+        document.put("types", types.stream().map(JavaCodeParser::typeInfoToJsonMap).collect(Collectors.toList()));
+        return document;
     }
+
+    // ------------------------------------------------------------------ types
 
     /**
      * @param enclosingTypeName dotted name of the types this declaration is nested in, or null at
      *                          the top level. Nested types are named Outer.Inner, so a method's
      *                          qualified name identifies exactly one declaration.
      */
-    private static void processTypeDeclaration(TypeDeclaration<?> typeDecl, String packageName, String enclosingTypeName, List<MethodInfo> results, List<String> imports, String topComment) {
+    private static void processTypeDeclaration(TypeDeclaration<?> typeDecl, String packageName, String enclosingTypeName, List<TypeInfo> types) {
+        String name = nest(enclosingTypeName, typeDecl.getNameAsString());
+
+        TypeInfo type = new TypeInfo();
+        type.name = name;
+        type.namespaceName = packageName != null ? packageName : "";
+        type.qualifiedName = (packageName != null ? packageName + "." : "") + name;
+        type.kind = kindOf(typeDecl);
+
         if (typeDecl.isClassOrInterfaceDeclaration()) {
-            processClassOrInterface(typeDecl.asClassOrInterfaceDeclaration(), packageName, enclosingTypeName, results, imports, topComment);
-        } else if (typeDecl.isEnumDeclaration()) {
-            processEnumDeclaration(typeDecl.asEnumDeclaration(), packageName, enclosingTypeName, results, imports, topComment);
+            ClassOrInterfaceDeclaration classDecl = typeDecl.asClassOrInterfaceDeclaration();
+            type.inheritsFrom.addAll(classDecl.getExtendedTypes().stream().map(t -> t.asString()).collect(Collectors.toList()));
+            type.inheritsFrom.addAll(classDecl.getImplementedTypes().stream().map(t -> t.asString()).collect(Collectors.toList()));
         } else if (typeDecl.isRecordDeclaration()) {
-            processRecordDeclaration(typeDecl.asRecordDeclaration(), packageName, enclosingTypeName, results, imports, topComment);
+            type.inheritsFrom.addAll(typeDecl.asRecordDeclaration().getImplementedTypes().stream().map(t -> t.asString()).collect(Collectors.toList()));
+        } else if (typeDecl.isEnumDeclaration()) {
+            type.inheritsFrom.addAll(typeDecl.asEnumDeclaration().getImplementedTypes().stream().map(t -> t.asString()).collect(Collectors.toList()));
         }
+
+        // Resolved once per type rather than once per method, which is where v1 spent most of
+        // its output budget.
+        try {
+            ResolvedReferenceTypeDeclaration decl = typeDecl.resolve().asReferenceType();
+            type.inheritanceHierarchy = decl.getAllAncestors().stream()
+                    .map(ResolvedReferenceType::getQualifiedName)
+                    .collect(Collectors.toList());
+        } catch (Exception ignored) {}
+
+        for (MethodDeclaration method : typeDecl.getMethods()) {
+            type.methods.add(extractMethodInfo(method, type.qualifiedName));
+        }
+
+        types.add(type);
+
+        for (BodyDeclaration<?> member : typeDecl.getMembers()) {
+            if (member instanceof TypeDeclaration) {
+                processTypeDeclaration((TypeDeclaration<?>) member, packageName, name, types);
+            }
+        }
+    }
+
+    private static String kindOf(TypeDeclaration<?> typeDecl) {
+        if (typeDecl.isEnumDeclaration()) return "enum";
+        if (typeDecl.isRecordDeclaration()) return "record";
+        if (typeDecl.isAnnotationDeclaration()) return "annotation";
+        if (typeDecl.isClassOrInterfaceDeclaration() && typeDecl.asClassOrInterfaceDeclaration().isInterface()) return "interface";
+        return "class";
     }
 
     private static String nest(String enclosingTypeName, String simpleName) {
         return enclosingTypeName == null ? simpleName : enclosingTypeName + "." + simpleName;
     }
 
-    private static void processClassOrInterface(ClassOrInterfaceDeclaration classDecl, String packageName, String enclosingTypeName, List<MethodInfo> results, List<String> imports, String topComment) {
-        String className = nest(enclosingTypeName, classDecl.getNameAsString());
-        List<String> baseTypes = new ArrayList<>();
-        baseTypes.addAll(classDecl.getExtendedTypes().stream().map(t -> t.asString()).collect(Collectors.toList()));
-        baseTypes.addAll(classDecl.getImplementedTypes().stream().map(t -> t.asString()).collect(Collectors.toList()));
+    /** File header comment: comments that precede the first type and do not document it. */
+    private static String extractTopLevelComment(CompilationUnit cu) {
+        int firstTypeLine = cu.getTypes().stream()
+                .map(t -> t.getBegin().map(p -> p.line).orElse(Integer.MAX_VALUE))
+                .min(Integer::compareTo)
+                .orElse(Integer.MAX_VALUE);
 
-        for (MethodDeclaration method : classDecl.getMethods()) {
-            MethodInfo info = extractMethodInfo(method, packageName, className, baseTypes, imports, topComment, classDecl);
-            results.add(info);
-        }
+        Set<Comment> typeDocs = cu.getTypes().stream()
+                .map(t -> t.getComment().orElse(null))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
 
-        for (BodyDeclaration<?> member : classDecl.getMembers()) {
-            if (member.isClassOrInterfaceDeclaration()) {
-                processClassOrInterface(member.asClassOrInterfaceDeclaration(), packageName, className, results, imports, topComment);
-            } else if (member.isEnumDeclaration()) {
-                processEnumDeclaration(member.asEnumDeclaration(), packageName, className, results, imports, topComment);
-            } else if (member.isRecordDeclaration()) {
-                processRecordDeclaration(member.asRecordDeclaration(), packageName, className, results, imports, topComment);
-            }
-        }
+        List<Comment> candidates = new ArrayList<>(cu.getAllContainedComments());
+        cu.getComment().ifPresent(candidates::add);
+
+        List<String> texts = candidates.stream()
+                .filter(c -> !typeDocs.contains(c))
+                .filter(c -> c.getBegin().map(p -> p.line).orElse(Integer.MAX_VALUE) < firstTypeLine)
+                .sorted(Comparator.comparingInt(c -> c.getBegin().map(p -> p.line).orElse(0)))
+                .map(c -> normalizeEol(c.getContent()).trim())
+                .filter(t -> !t.isEmpty())
+                .collect(Collectors.toList());
+
+        return texts.isEmpty() ? null : String.join("\n", texts);
     }
 
-    private static void processEnumDeclaration(EnumDeclaration enumDecl, String packageName, String enclosingTypeName, List<MethodInfo> results, List<String> imports, String topComment) {
-        String className = nest(enclosingTypeName, enumDecl.getNameAsString());
-        for (BodyDeclaration<?> member : enumDecl.getMembers()) {
-            if (member.isMethodDeclaration()) {
-                MethodInfo info = extractMethodInfo(member.asMethodDeclaration(), packageName, className, Collections.emptyList(), imports, topComment, enumDecl);
-                results.add(info);
-            }
-        }
-        for (BodyDeclaration<?> member : enumDecl.getMembers()) {
-            if (member.isClassOrInterfaceDeclaration()) {
-                processClassOrInterface(member.asClassOrInterfaceDeclaration(), packageName, className, results, imports, topComment);
-            } else if (member.isEnumDeclaration()) {
-                processEnumDeclaration(member.asEnumDeclaration(), packageName, className, results, imports, topComment);
-            } else if (member.isRecordDeclaration()) {
-                processRecordDeclaration(member.asRecordDeclaration(), packageName, className, results, imports, topComment);
-            }
-        }
-    }
+    // ---------------------------------------------------------------- methods
 
-    private static void processRecordDeclaration(RecordDeclaration recordDecl, String packageName, String enclosingTypeName, List<MethodInfo> results, List<String> imports, String topComment) {
-        String className = nest(enclosingTypeName, recordDecl.getNameAsString());
-        for (BodyDeclaration<?> member : recordDecl.getMembers()) {
-            if (member.isMethodDeclaration()) {
-                MethodInfo info = extractMethodInfo(member.asMethodDeclaration(), packageName, className, Collections.emptyList(), imports, topComment, recordDecl);
-                results.add(info);
-            }
-        }
-        for (BodyDeclaration<?> member : recordDecl.getMembers()) {
-            if (member.isClassOrInterfaceDeclaration()) {
-                processClassOrInterface(member.asClassOrInterfaceDeclaration(), packageName, className, results, imports, topComment);
-            } else if (member.isEnumDeclaration()) {
-                processEnumDeclaration(member.asEnumDeclaration(), packageName, className, results, imports, topComment);
-            } else if (member.isRecordDeclaration()) {
-                processRecordDeclaration(member.asRecordDeclaration(), packageName, className, results, imports, topComment);
-            }
-        }
-    }
-
-    private static MethodInfo extractMethodInfo(MethodDeclaration method, String packageName, String className, List<String> baseTypes, List<String> imports, String topComment, TypeDeclaration<?> parentType) {
+    private static MethodInfo extractMethodInfo(MethodDeclaration method, String typeQualifiedName) {
         MethodInfo info = new MethodInfo();
         info.name = method.getNameAsString();
-        info.returnType = method.getType().asString();
+        info.qualifiedName = typeQualifiedName + "." + info.name;
         info.modifiers = method.getModifiers().stream().map(m -> m.getKeyword().asString()).collect(Collectors.toList());
 
         for (AnnotationExpr ann : method.getAnnotations()) {
             AnnotationInfo annInfo = new AnnotationInfo();
             annInfo.name = ann.getNameAsString();
             try {
-                ResolvedAnnotationDeclaration rad = ann.resolve();
-                annInfo.fullyQualifiedName = rad.getQualifiedName();
+                annInfo.qualifiedName = ann.resolve().getQualifiedName();
             } catch (Exception e) {
-                annInfo.fullyQualifiedName = ann.getNameAsString();
+                annInfo.qualifiedName = ann.getNameAsString();
             }
 
             if (ann.isNormalAnnotationExpr()) {
@@ -361,7 +386,7 @@ public class JavaCodeParser {
 
             // Without testng on the type solver path the annotation only resolves to its simple
             // name, which is the normal case when parsing a single file from stdin.
-            boolean isTestAnnotation = annInfo.fullyQualifiedName.endsWith(".Test") || annInfo.name.equals("Test");
+            boolean isTestAnnotation = annInfo.qualifiedName.endsWith(".Test") || annInfo.name.equals("Test");
             if (isTestAnnotation && annInfo.values.containsKey("dataProvider")) {
                 info.dataProviderName = annInfo.values.get("dataProvider");
             }
@@ -369,71 +394,56 @@ public class JavaCodeParser {
             info.annotations.add(annInfo);
         }
 
-        info.namespaceName = packageName;
-        info.className = className;
-        info.classBaseTypes = baseTypes;
-        info.importedTypes = imports;
-        info.topComment = topComment;
-
-        try {
-            ResolvedReferenceTypeDeclaration decl = method.resolve().declaringType().asReferenceType();
-            List<ResolvedReferenceType> ancestors = decl.getAllAncestors();
-            info.inheritanceHierarchy = ancestors.stream()
-                    .map(a -> a.getQualifiedName())
-                    .collect(Collectors.toList());
-        } catch (Exception ignored) {}
-
         for (Parameter p : method.getParameters()) {
             ParameterInfo pi = new ParameterInfo();
             pi.name = p.getNameAsString();
-            pi.type = p.getType().asString();
             try {
-                ResolvedType pt = p.getType().resolve();
-                pi.fullyQualifiedType = pt.describe();
+                pi.type = p.getType().resolve().describe();
+                pi.resolved = true;
             } catch (Exception e) {
-                pi.fullyQualifiedType = pi.type;
+                // The fallback to the name as written is exactly where resolution failed.
+                pi.type = p.getType().asString();
+                pi.resolved = false;
             }
             info.parameters.add(pi);
         }
 
-        info.fullCode = normalizeEol(method.toString());
-        info.code = normalizeEol(method.getBody().map(Object::toString).orElse(method.toString()));
+        info.returnType = method.getType().asString();
+        info.returnTypeResolved = false;
 
-        method.getThrownExceptions().forEach(te -> {
-            ThrownExceptionInfo tei = new ThrownExceptionInfo();
-            tei.exceptionType = te.asString();
-            try {
-                ResolvedType rt = te.resolve();
-                tei.fullyQualifiedExceptionType = rt.describe();
-            } catch (Exception ex) {
-                tei.fullyQualifiedExceptionType = tei.exceptionType;
-            }
-            info.thrownExceptions.add(tei);
-        });
+        try {
+            ResolvedMethodDeclaration rmd = method.resolve();
+            info.returnType = rmd.getReturnType().describe();
+            info.returnTypeResolved = true;
+            info.isOverride = isOverrideMethod(rmd);
+            info.implementedInterfaceMembers = getImplementedInterfaceMembers(rmd);
+        } catch (Exception e) {
+            // Ignore if symbol resolution fails
+        }
 
         method.getComment().ifPresent(comment -> {
             if (comment.isJavadocComment()) {
                 try {
                     Javadoc jd = comment.asJavadocComment().parse();
-                    info.xmlDoc.raw = normalizeEol(jd.toText());
-                    info.xmlDoc.summary = normalizeEol(jd.getDescription().toText().trim());
+                    info.javadoc.summary = normalizeEol(jd.getDescription().toText().trim());
 
                     for (JavadocBlockTag tag : jd.getBlockTags()) {
                         switch (tag.getTagName()) {
                             case "param":
-                                XmlParam xp = new XmlParam();
+                                JavadocParam xp = new JavadocParam();
                                 xp.name = tag.getName().orElse("");
                                 xp.description = normalizeEol(tag.getContent().toText().trim());
-                                info.xmlDoc.params.add(xp);
+                                info.javadoc.params.add(xp);
                                 break;
                             case "return":
-                                info.xmlDoc.returns = normalizeEol(tag.getContent().toText().trim());
+                                info.javadoc.returns = normalizeEol(tag.getContent().toText().trim());
                                 break;
                             case "throws":
-                                XmlThrows xt = new XmlThrows();
+                            case "exception":
+                                JavadocThrows xt = new JavadocThrows();
                                 xt.exceptionType = tag.getName().orElse("");
                                 xt.description = normalizeEol(tag.getContent().toText().trim());
-                                info.xmlDoc.throwsList.add(xt);
+                                info.javadoc.throwsList.add(xt);
                                 break;
                             default:
                                 break;
@@ -445,53 +455,110 @@ public class JavaCodeParser {
             }
         });
 
-        try {
-            ResolvedMethodDeclaration rmd = method.resolve();
-            info.fullyQualifiedReturnType = rmd.getReturnType().describe();
-            info.isOverride = isOverrideMethod(rmd);
-            info.implementedInterfaceMembers = getImplementedInterfaceMembers(rmd);
-        } catch (Exception e) {
-            // Ignore if symbol resolution fails
-        }
+        info.thrownExceptions = mergeThrownExceptions(method, info.javadoc);
+        info.calls = extractCalls(method);
+        info.lineSpan = spanOf(method.getBegin().orElse(null), method.getEnd().orElse(null));
 
-        if (method.getBody().isPresent()) {
-            for (MethodCallExpr call : method.getBody().get().findAll(MethodCallExpr.class)) {
-                CallInfo ci = new CallInfo();
-                ci.calleeName = call.getNameAsString();
-                call.getRange().ifPresent(range -> {
-                    ci.lineSpan = new LineSpan();
-                    ci.lineSpan.startLine = range.begin.line;
-                    ci.lineSpan.startColumn = range.begin.column;
-                    ci.lineSpan.endLine = range.end.line;
-                    ci.lineSpan.endColumn = range.end.column;
-                });
-
-                try {
-                    ResolvedMethodDeclaration cm = call.resolve();
-                    ci.fullyQualifiedCalleeName = cm.getQualifiedSignature();
-                    ci.returnType = cm.getReturnType().describe();
-                    ci.parameterTypes = new ArrayList<>();
-                    for (int i = 0; i < cm.getNumberOfParams(); i++) {
-                        ci.parameterTypes.add(cm.getParam(i).getType().describe());
-                    }
-                } catch (Exception ex) {
-                    ci.fullyQualifiedCalleeName = ci.calleeName;
-                }
-
-                info.calls.add(ci);
+        if (includeSource) {
+            info.fullCode = sliceSource(method.getBegin().orElse(null), method.getEnd().orElse(null));
+            Position methodStart = method.getBegin().orElse(null);
+            Position bodyStart = method.getBody().flatMap(b -> b.getBegin()).orElse(null);
+            if (methodStart != null && bodyStart != null && info.fullCode != null) {
+                info.bodyOffset = offsetOf(bodyStart) - offsetOf(methodStart);
             }
         }
 
-        method.getRange().ifPresent(range -> {
-            LineSpan ls = new LineSpan();
-            ls.startLine = range.begin.line;
-            ls.startColumn = range.begin.column;
-            ls.endLine = range.end.line;
-            ls.endColumn = range.end.column;
-            info.lineSpan = ls;
+        return info;
+    }
+
+    /**
+     * The throws clause and the Javadoc @throws tags describe the same thing, so they become one
+     * list keyed by exception type, recording which sources mentioned it.
+     */
+    private static List<ThrownExceptionInfo> mergeThrownExceptions(MethodDeclaration method, JavadocInfo javadoc) {
+        List<ThrownExceptionInfo> merged = new ArrayList<>();
+
+        method.getThrownExceptions().forEach(te -> {
+            ThrownExceptionInfo tei = new ThrownExceptionInfo();
+            try {
+                tei.type = te.resolve().describe();
+                tei.resolved = true;
+            } catch (Exception ex) {
+                tei.type = te.asString();
+                tei.resolved = false;
+            }
+            tei.sources.add("signature");
+            merged.add(tei);
         });
 
-        return info;
+        for (JavadocThrows jt : javadoc.throwsList) {
+            ThrownExceptionInfo existing = merged.stream()
+                    .filter(t -> simpleName(t.type).equals(simpleName(jt.exceptionType)))
+                    .findFirst()
+                    .orElse(null);
+            if (existing != null) {
+                existing.sources.add("javadoc");
+                existing.description = jt.description;
+            } else {
+                ThrownExceptionInfo tei = new ThrownExceptionInfo();
+                tei.type = jt.exceptionType;
+                tei.resolved = false;
+                tei.sources.add("javadoc");
+                tei.description = jt.description;
+                merged.add(tei);
+            }
+        }
+
+        return merged;
+    }
+
+    private static String simpleName(String type) {
+        if (type == null) return "";
+        int dot = type.lastIndexOf('.');
+        return dot >= 0 ? type.substring(dot + 1) : type;
+    }
+
+    /**
+     * Invocations in the method body, grouped by call target. The qualified signature carries
+     * parameter types, so overloads stay distinct nodes in a call graph.
+     */
+    private static List<CallInfo> extractCalls(MethodDeclaration method) {
+        List<CallInfo> calls = new ArrayList<>();
+        Map<String, CallInfo> index = new LinkedHashMap<>();
+
+        if (!method.getBody().isPresent()) return calls;
+
+        for (MethodCallExpr call : method.getBody().get().findAll(MethodCallExpr.class)) {
+            String target;
+            String returnType = null;
+            boolean resolved = false;
+
+            try {
+                ResolvedMethodDeclaration cm = call.resolve();
+                target = cm.getQualifiedSignature();
+                returnType = cm.getReturnType().describe();
+                resolved = true;
+            } catch (Exception ex) {
+                target = call.getNameAsString();
+            }
+
+            CallInfo ci = index.get(target);
+            if (ci == null) {
+                ci = new CallInfo();
+                ci.target = target;
+                ci.returnType = returnType;
+                ci.resolved = resolved;
+                index.put(target, ci);
+                calls.add(ci);
+            }
+            ci.count++;
+            LineSpan span = spanOf(call.getBegin().orElse(null), call.getEnd().orElse(null));
+            if (span != null) {
+                ci.lineSpans.add(span);
+            }
+        }
+
+        return calls;
     }
 
     private static boolean isOverrideMethod(ResolvedMethodDeclaration rmd) {
@@ -542,14 +609,15 @@ public class JavaCodeParser {
         return true;
     }
 
-    private static void linkDataProviders(List<MethodInfo> methods) {
+    private static void linkDataProviders(List<TypeInfo> types) {
+        List<MethodInfo> methods = types.stream().flatMap(t -> t.methods.stream()).collect(Collectors.toList());
+
         Map<String, MethodInfo> dataProviders = new HashMap<>();
         for (MethodInfo mi : methods) {
             for (AnnotationInfo ann : mi.annotations) {
-                boolean isDataProvider = ann.fullyQualifiedName.endsWith(".DataProvider") || ann.name.equals("DataProvider");
+                boolean isDataProvider = ann.qualifiedName.endsWith(".DataProvider") || ann.name.equals("DataProvider");
                 if (isDataProvider && ann.values.containsKey("name")) {
-                    String dpName = ann.values.get("name");
-                    dataProviders.put(dpName, mi);
+                    dataProviders.put(ann.values.get("name"), mi);
                     break;
                 }
             }
@@ -562,28 +630,79 @@ public class JavaCodeParser {
         }
     }
 
-    private static String extractAllJavadocInfoAsRaw(Javadoc jd) {
-        return normalizeEol(jd.toText());
+    // ----------------------------------------------------------------- source
+
+    private static int[] computeLineStarts(String text) {
+        List<Integer> starts = new ArrayList<>();
+        starts.add(0);
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '\n') {
+                starts.add(i + 1);
+            }
+        }
+        return starts.stream().mapToInt(Integer::intValue).toArray();
+    }
+
+    private static int offsetOf(Position position) {
+        int lineIndex = Math.min(Math.max(position.line - 1, 0), lineStarts.length - 1);
+        return lineStarts[lineIndex] + (position.column - 1);
+    }
+
+    /**
+     * The exact source text that line_span selects. JavaParser's toString() would return a
+     * pretty-printed reconstruction instead, which no span can reproduce.
+     */
+    private static String sliceSource(Position begin, Position end) {
+        if (begin == null || end == null) return null;
+        int from = offsetOf(begin);
+        int to = Math.min(offsetOf(end) + 1, sourceText.length());
+        return from >= 0 && from <= to ? sourceText.substring(from, to) : null;
+    }
+
+    private static LineSpan spanOf(Position begin, Position end) {
+        if (begin == null || end == null) return null;
+        LineSpan ls = new LineSpan();
+        ls.startLine = begin.line;
+        ls.startColumn = begin.column;
+        ls.endLine = end.line;
+        ls.endColumn = end.column;
+        return ls;
+    }
+
+    /**
+     * JavaParser's printer and Javadoc reader both emit the platform line separator, which would
+     * make the same input produce different output on Windows and Linux.
+     */
+    private static String normalizeEol(String text) {
+        return text == null ? null : text.replace("\r\n", "\n").replace("\r", "\n");
+    }
+
+    // ------------------------------------------------------------------- json
+
+    private static Map<String, Object> typeInfoToJsonMap(TypeInfo type) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("name", type.name);
+        map.put("qualified_name", type.qualifiedName);
+        map.put("namespace", type.namespaceName);
+        map.put("kind", type.kind);
+        map.put("inherits_from", type.inheritsFrom);
+        map.put("inheritance_hierarchy", type.inheritanceHierarchy);
+        map.put("methods", type.methods.stream().map(JavaCodeParser::methodInfoToJsonMap).collect(Collectors.toList()));
+        return map;
     }
 
     private static Map<String, Object> methodInfoToJsonMap(MethodInfo mi) {
         Map<String, Object> map = new LinkedHashMap<>();
 
-        map.put("symbol_type", "method");
         map.put("name", mi.name);
-
-        String qualifiedName = (mi.namespaceName != null ? mi.namespaceName + "." : "")
-                + (mi.className != null ? mi.className + "." : "") + mi.name;
-        map.put("qualified_name", qualifiedName);
-
-        map.put("namespace", mi.namespaceName != null ? mi.namespaceName : "");
+        map.put("qualified_name", mi.qualifiedName);
         map.put("modifiers", mi.modifiers);
 
         List<Map<String, Object>> annotationList = new ArrayList<>();
         for (AnnotationInfo ann : mi.annotations) {
-            Map<String, Object> annMap = new HashMap<>();
+            Map<String, Object> annMap = new LinkedHashMap<>();
             annMap.put("name", ann.name);
-            annMap.put("fully_qualified_name", ann.fullyQualifiedName);
+            annMap.put("qualified_name", ann.qualifiedName);
             annMap.put("values", ann.values);
             annotationList.add(annMap);
         }
@@ -591,100 +710,76 @@ public class JavaCodeParser {
 
         List<Map<String, Object>> paramsList = new ArrayList<>();
         for (ParameterInfo p : mi.parameters) {
-            Map<String, Object> pMap = new HashMap<>();
+            Map<String, Object> pMap = new LinkedHashMap<>();
             pMap.put("name", p.name);
             pMap.put("type", p.type);
-            pMap.put("fully_qualified_type", p.fullyQualifiedType);
+            pMap.put("resolved", p.resolved);
             paramsList.add(pMap);
         }
         map.put("parameters", paramsList);
 
-        Map<String, Object> returnTypeMap = new HashMap<>();
+        Map<String, Object> returnTypeMap = new LinkedHashMap<>();
         returnTypeMap.put("type", mi.returnType);
-        returnTypeMap.put("fully_qualified_type", mi.fullyQualifiedReturnType != null ? mi.fullyQualifiedReturnType : mi.returnType);
+        returnTypeMap.put("resolved", mi.returnTypeResolved);
         map.put("return_type", returnTypeMap);
 
-        Map<String, Object> docMap = new HashMap<>();
-        docMap.put("summary", mi.xmlDoc.summary);
-
+        Map<String, Object> docMap = new LinkedHashMap<>();
+        docMap.put("summary", mi.javadoc.summary);
         List<Map<String, String>> docParams = new ArrayList<>();
-        for (XmlParam xp : mi.xmlDoc.params) {
-            Map<String, String> xpMap = new HashMap<>();
+        for (JavadocParam xp : mi.javadoc.params) {
+            Map<String, String> xpMap = new LinkedHashMap<>();
             xpMap.put("name", xp.name);
             xpMap.put("description", xp.description);
             docParams.add(xpMap);
         }
         docMap.put("params", docParams);
-        docMap.put("returns", mi.xmlDoc.returns);
-
-        List<Map<String, String>> docThrowsList = new ArrayList<>();
-        for (XmlThrows xt : mi.xmlDoc.throwsList) {
-            Map<String, String> xtMap = new HashMap<>();
-            xtMap.put("exception_type", xt.exceptionType);
-            xtMap.put("description", xt.description);
-            docThrowsList.add(xtMap);
-        }
-        docMap.put("throws", docThrowsList);
-        docMap.put("raw", mi.xmlDoc.raw);
+        docMap.put("returns", mi.javadoc.returns);
         map.put("documentation", docMap);
-
-        map.put("body_code", mi.code);
-        map.put("full_code", mi.fullCode);
 
         List<Map<String, Object>> callsList = new ArrayList<>();
         for (CallInfo c : mi.calls) {
-            Map<String, Object> cMap = new HashMap<>();
-            cMap.put("callee_name", c.calleeName);
-            cMap.put("fully_qualified_callee_name", c.fullyQualifiedCalleeName);
+            Map<String, Object> cMap = new LinkedHashMap<>();
+            cMap.put("target", c.target);
             cMap.put("return_type", c.returnType);
-            cMap.put("parameter_types", c.parameterTypes);
-            if (c.lineSpan != null) {
-                Map<String, Integer> callLineSpan = new HashMap<>();
-                callLineSpan.put("start_line", c.lineSpan.startLine);
-                callLineSpan.put("start_column", c.lineSpan.startColumn);
-                callLineSpan.put("end_line", c.lineSpan.endLine);
-                callLineSpan.put("end_column", c.lineSpan.endColumn);
-                cMap.put("line_span", callLineSpan);
-            } else {
-                cMap.put("line_span", null);
-            }
+            cMap.put("resolved", c.resolved);
+            cMap.put("count", c.count);
+            cMap.put("line_spans", c.lineSpans.stream().map(JavaCodeParser::lineSpanToJsonMap).collect(Collectors.toList()));
             callsList.add(cMap);
         }
         map.put("calls", callsList);
 
-        if (mi.lineSpan != null) {
-            Map<String, Integer> lineSpanMap = new HashMap<>();
-            lineSpanMap.put("start_line", mi.lineSpan.startLine);
-            lineSpanMap.put("start_column", mi.lineSpan.startColumn);
-            lineSpanMap.put("end_line", mi.lineSpan.endLine);
-            lineSpanMap.put("end_column", mi.lineSpan.endColumn);
-            map.put("line_span", lineSpanMap);
-        } else {
-            map.put("line_span", null);
-        }
+        map.put("line_span", mi.lineSpan != null ? lineSpanToJsonMap(mi.lineSpan) : null);
 
-        map.put("inherits_from", mi.classBaseTypes);
-        map.put("implemented_interface_members", mi.implementedInterfaceMembers);
-
-        List<Map<String, String>> thrownExList = new ArrayList<>();
+        List<Map<String, Object>> thrownList = new ArrayList<>();
         for (ThrownExceptionInfo te : mi.thrownExceptions) {
-            Map<String, String> teMap = new HashMap<>();
-            teMap.put("exception_type", te.exceptionType);
-            teMap.put("fully_qualified_exception_type", te.fullyQualifiedExceptionType);
-            thrownExList.add(teMap);
+            Map<String, Object> teMap = new LinkedHashMap<>();
+            teMap.put("type", te.type);
+            teMap.put("resolved", te.resolved);
+            teMap.put("sources", te.sources);
+            teMap.put("description", te.description);
+            thrownList.add(teMap);
         }
-        map.put("thrown_exceptions", thrownExList);
+        map.put("thrown_exceptions", thrownList);
 
         map.put("is_override", mi.isOverride != null ? mi.isOverride : false);
-
+        map.put("implemented_interface_members", mi.implementedInterfaceMembers);
         map.put("data_provider_name", mi.dataProviderName);
         map.put("data_provider_source", mi.dataProviderMethod != null ? mi.dataProviderMethod.name : null);
 
-        map.put("imported_types", mi.importedTypes);
-        map.put("top_level_comment", mi.topComment);
-        map.put("inheritance_hierarchy", mi.inheritanceHierarchy);
-        map.put("language", "java");
+        if (includeSource) {
+            map.put("full_code", mi.fullCode);
+            map.put("body_offset", mi.bodyOffset);
+        }
 
+        return map;
+    }
+
+    private static Map<String, Integer> lineSpanToJsonMap(LineSpan ls) {
+        Map<String, Integer> map = new LinkedHashMap<>();
+        map.put("start_line", ls.startLine);
+        map.put("start_column", ls.startColumn);
+        map.put("end_line", ls.endLine);
+        map.put("end_column", ls.endColumn);
         return map;
     }
 }
