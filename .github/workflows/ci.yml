@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  java:
+    name: Java parser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build
+        working-directory: java
+        run: ./build.sh
+
+      - name: Verify example output is reproducible
+        run: |
+          cat examples/OrderService.java \
+            | java -jar java/JavaCodeParser_Full.jar > actual.json
+          diff -u examples/OrderService.java.output.json actual.json
+
+  csharp:
+    name: C# parser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build
+        working-directory: csharp
+        run: ./build.sh
+
+      - name: Verify example output is reproducible
+        run: |
+          cat examples/OrderService.cs \
+            | ./csharp/linux-x64/CSharpCodeParser > actual.json
+          diff -u examples/OrderService.cs.output.json actual.json

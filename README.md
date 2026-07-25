@@ -1,5 +1,11 @@
 # AST Code Parsers
 
+[![CI](https://github.com/Chillwind132/ast-code-parsers/actions/workflows/ci.yml/badge.svg)](https://github.com/Chillwind132/ast-code-parsers/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Java](https://img.shields.io/badge/Java-17%2B-orange?logo=openjdk&logoColor=white)](java/)
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](csharp/)
+[![Release](https://img.shields.io/github/v/release/Chillwind132/ast-code-parsers?color=blue)](https://github.com/Chillwind132/ast-code-parsers/releases/latest)
+
 A collection of code parsers that use **native language ASTs** to provide the highest quality of semantic extraction, compared to language-agnostic tools like tree-sitter.
 
 Each parser is a standalone CLI that reads source code on **stdin** and writes a JSON array of method-level metadata to **stdout**. Both parsers emit the *same schema*, so downstream consumers (RAG indexers, code search, call-graph analysis, documentation generators) can treat Java and C# uniformly.
