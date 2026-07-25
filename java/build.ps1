@@ -126,4 +126,4 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "$OutputJar created successfully." -ForegroundColor Green
 
 Write-Host "Build complete. Parse a file with:"
-Write-Host "  java -jar $OutputJar < ..\examples\OrderService.java"
+Write-Host "  Get-Content ..\examples\OrderService.java -Raw | java -jar $OutputJar"

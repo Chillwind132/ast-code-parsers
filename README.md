@@ -47,7 +47,7 @@ public class OrderService extends BaseService {
 ```
 
 ```bash
-java -jar java/JavaCodeParser_Full.jar < examples/OrderService.java
+cat examples/OrderService.java | java -jar java/JavaCodeParser_Full.jar
 ```
 
 ### Output
@@ -177,7 +177,7 @@ Note what a syntax-only parser could not have given you: `String` resolved to `j
 `examples/OrderService.cs` is the direct equivalent, and the output uses identical field names:
 
 ```bash
-csharp/linux-x64/CSharpCodeParser < examples/OrderService.cs
+cat examples/OrderService.cs | csharp/linux-x64/CSharpCodeParser
 ```
 
 ```json
@@ -290,15 +290,26 @@ Both produce a self-contained single-file binary with no runtime prerequisite on
 
 ## Usage
 
+Each parser reads source code on stdin, so pipe a file into it and the JSON comes back on stdout.
+
 ```bash
 # Java
-java -jar java/JavaCodeParser_Full.jar < MyClass.java > methods.json
+cat MyClass.java | java -jar java/JavaCodeParser_Full.jar
 
 # C#
-csharp/linux-x64/CSharpCodeParser < MyClass.cs > methods.json
+cat MyClass.cs | csharp/linux-x64/CSharpCodeParser
 ```
 
-Both read a single compilation unit from stdin, so batching across a repository is left to the caller — spawn one process per file, or keep a worker pool if throughput matters.
+On Windows, `Get-Content` replaces `cat`:
+
+```powershell
+Get-Content MyClass.java -Raw | java -jar java\JavaCodeParser_Full.jar
+Get-Content MyClass.cs -Raw | .\csharp\win-x64\CSharpCodeParser.exe
+```
+
+To save the result instead of printing it, add `> methods.json` to the end of any of the above.
+
+Both parsers read a single compilation unit per run, so batching across a repository is left to the caller — spawn one process per file, or keep a worker pool if throughput matters.
 
 ---
 
