@@ -11,8 +11,7 @@
 param(
     [string]$MainClass = "JavaCodeParser",  # Fully qualified main class if needed, e.g. com.example.JavaCodeParser
     [string]$OutputJar = "JavaCodeParser_Full.jar",
-    [string]$ManifestFile = "MANIFEST.MF",
-    [string]$JavaVersion = "17"  # Target Java version
+    [string]$ManifestFile = "MANIFEST.MF"
 )
 
 # Set execution directory to script location
@@ -126,11 +125,5 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "$OutputJar created successfully." -ForegroundColor Green
 
-# Optional: Test run (if needed)
-# Write-Host "Testing $OutputJar with Java..."
-# (Get-Content test_files\TestFile.java) | java --enable-preview --release $JavaVersion -jar $OutputJar
-
-Write-Host "Build complete. You can now run:"
-Write-Host "  java --enable-preview --release $JavaVersion -jar $OutputJar"
-Write-Host "Or pipe input:"
-Write-Host "  Get-Content test_files\TestFile.java | java --enable-preview --release $JavaVersion -jar $OutputJar"
+Write-Host "Build complete. Parse a file with:"
+Write-Host "  java -jar $OutputJar < ..\examples\OrderService.java"
