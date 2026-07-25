@@ -56,9 +56,18 @@ using System.Xml.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Basic.Reference.Assemblies;
 
 class Program
 {
+    // Emits "System.String" rather than the "string" keyword alias, so fully qualified
+    // types line up with the Java parser's output.
+    static readonly SymbolDisplayFormat QualifiedFormat = new SymbolDisplayFormat(
+        globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
+        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.ExpandNullable);
+
     static void Main()
     {
         string code = ReadAllStdin();
@@ -68,14 +77,16 @@ class Program
         var root = tree.GetCompilationUnitRoot();
 
         // Attempt to create a Compilation for semantic info.
+        // Reference assemblies are embedded rather than loaded from disk, because
+        // Assembly.Location returns an empty string in single-file published apps.
         Compilation compilation = null;
         try
         {
-            var references = new List<MetadataReference>
-            {
-                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            };
-            compilation = CSharpCompilation.Create("CodeAnalysis", new[] { tree }, references);
+            compilation = CSharpCompilation.Create(
+                "CodeAnalysis",
+                new[] { tree },
+                Net80.References.All,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         }
         catch
         {
@@ -189,13 +200,13 @@ class Program
 
                     try
                     {
-                        info.FullyQualifiedReturnType = methodSymbol.ReturnType?.ToDisplayString();
+                        info.FullyQualifiedReturnType = methodSymbol.ReturnType?.ToDisplayString(QualifiedFormat);
                     }
                     catch { }
 
                     for (int i = 0; i < methodSymbol.Parameters.Length && i < info.Parameters.Count; i++)
                     {
-                        info.Parameters[i].FullyQualifiedType = methodSymbol.Parameters[i].Type.ToDisplayString();
+                        info.Parameters[i].FullyQualifiedType = methodSymbol.Parameters[i].Type.ToDisplayString(QualifiedFormat);
                     }
                 }
             }
@@ -224,9 +235,9 @@ class Program
                         if (symInfo.Symbol is IMethodSymbol callSymbol)
                         {
                             callInfo.CalleeName = callSymbol.Name;
-                            callInfo.FullyQualifiedCalleeName = callSymbol.ContainingType.ToDisplayString() + "." + callSymbol.Name;
-                            callInfo.ReturnType = callSymbol.ReturnType.ToDisplayString();
-                            callInfo.ParameterTypes = callSymbol.Parameters.Select(p => p.Type.ToDisplayString()).ToList();
+                            callInfo.FullyQualifiedCalleeName = callSymbol.ContainingType.ToDisplayString(QualifiedFormat) + "." + callSymbol.Name;
+                            callInfo.ReturnType = callSymbol.ReturnType.ToDisplayString(QualifiedFormat);
+                            callInfo.ParameterTypes = callSymbol.Parameters.Select(p => p.Type.ToDisplayString(QualifiedFormat)).ToList();
                         }
                         else
                         {

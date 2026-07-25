@@ -1,0 +1,367 @@
+[
+  {
+    "symbol_type": "method",
+    "name": "GetAmount",
+    "qualified_name": "Example.Orders.Promo.GetAmount",
+    "namespace": "Example.Orders",
+    "modifiers": [
+      "public"
+    ],
+    "annotations": [],
+    "parameters": [],
+    "return_type": {
+      "type": "decimal",
+      "fully_qualified_type": "System.Decimal"
+    },
+    "documentation": {
+      "summary": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "raw": null
+    },
+    "body_code": "=\u003E 5.00m",
+    "full_code": "        public decimal GetAmount() =\u003E 5.00m;\n",
+    "calls": [],
+    "line_span": {
+      "start_line": 13,
+      "start_column": 9,
+      "end_line": 13,
+      "end_column": 45
+    },
+    "inherits_from": [],
+    "implemented_interface_members": [],
+    "thrown_exceptions": [],
+    "is_override": false,
+    "data_provider_name": null,
+    "data_provider_source": null,
+    "imported_types": [],
+    "top_level_comment": null,
+    "inheritance_hierarchy": [],
+    "language": "csharp"
+  },
+  {
+    "symbol_type": "method",
+    "name": "GetTotal",
+    "qualified_name": "Example.Orders.Order.GetTotal",
+    "namespace": "Example.Orders",
+    "modifiers": [
+      "public"
+    ],
+    "annotations": [],
+    "parameters": [],
+    "return_type": {
+      "type": "decimal",
+      "fully_qualified_type": "System.Decimal"
+    },
+    "documentation": {
+      "summary": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "raw": null
+    },
+    "body_code": "=\u003E 100.00m",
+    "full_code": "        public decimal GetTotal() =\u003E 100.00m;\n",
+    "calls": [],
+    "line_span": {
+      "start_line": 18,
+      "start_column": 9,
+      "end_line": 18,
+      "end_column": 46
+    },
+    "inherits_from": [],
+    "implemented_interface_members": [],
+    "thrown_exceptions": [],
+    "is_override": false,
+    "data_provider_name": null,
+    "data_provider_source": null,
+    "imported_types": [],
+    "top_level_comment": null,
+    "inheritance_hierarchy": [],
+    "language": "csharp"
+  },
+  {
+    "symbol_type": "method",
+    "name": "FindByCode",
+    "qualified_name": "Example.Orders.PromoRepository.FindByCode",
+    "namespace": "Example.Orders",
+    "modifiers": [
+      "public"
+    ],
+    "annotations": [],
+    "parameters": [
+      {
+        "name": "code",
+        "type": "string",
+        "fully_qualified_type": "System.String"
+      }
+    ],
+    "return_type": {
+      "type": "Promo",
+      "fully_qualified_type": "Example.Orders.Promo"
+    },
+    "documentation": {
+      "summary": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "raw": null
+    },
+    "body_code": "=\u003E new Promo()",
+    "full_code": "        public Promo FindByCode(string code) =\u003E new Promo();\n",
+    "calls": [],
+    "line_span": {
+      "start_line": 23,
+      "start_column": 9,
+      "end_line": 23,
+      "end_column": 61
+    },
+    "inherits_from": [],
+    "implemented_interface_members": [],
+    "thrown_exceptions": [],
+    "is_override": false,
+    "data_provider_name": null,
+    "data_provider_source": null,
+    "imported_types": [],
+    "top_level_comment": null,
+    "inheritance_hierarchy": [],
+    "language": "csharp"
+  },
+  {
+    "symbol_type": "method",
+    "name": "ApplyDiscount",
+    "qualified_name": "Example.Orders.BaseService.ApplyDiscount",
+    "namespace": "Example.Orders",
+    "modifiers": [
+      "public",
+      "abstract"
+    ],
+    "annotations": [],
+    "parameters": [
+      {
+        "name": "order",
+        "type": "Order",
+        "fully_qualified_type": "Example.Orders.Order"
+      },
+      {
+        "name": "code",
+        "type": "string",
+        "fully_qualified_type": "System.String"
+      }
+    ],
+    "return_type": {
+      "type": "decimal",
+      "fully_qualified_type": "System.Decimal"
+    },
+    "documentation": {
+      "summary": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "raw": null
+    },
+    "body_code": "{}",
+    "full_code": "        public abstract decimal ApplyDiscount(Order order, string code);\n",
+    "calls": [],
+    "line_span": {
+      "start_line": 28,
+      "start_column": 9,
+      "end_line": 28,
+      "end_column": 73
+    },
+    "inherits_from": [],
+    "implemented_interface_members": [],
+    "thrown_exceptions": [],
+    "is_override": false,
+    "data_provider_name": null,
+    "data_provider_source": null,
+    "imported_types": [],
+    "top_level_comment": null,
+    "inheritance_hierarchy": [],
+    "language": "csharp"
+  },
+  {
+    "symbol_type": "method",
+    "name": "Validate",
+    "qualified_name": "Example.Orders.BaseService.Validate",
+    "namespace": "Example.Orders",
+    "modifiers": [
+      "protected"
+    ],
+    "annotations": [],
+    "parameters": [
+      {
+        "name": "promo",
+        "type": "Promo",
+        "fully_qualified_type": "Example.Orders.Promo"
+      }
+    ],
+    "return_type": {
+      "type": "void",
+      "fully_qualified_type": "System.Void"
+    },
+    "documentation": {
+      "summary": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "raw": null
+    },
+    "body_code": "        {\n            if (promo == null) throw new ArgumentNullException(nameof(promo));\n        }\n",
+    "full_code": "\n        protected void Validate(Promo promo)\n        {\n            if (promo == null) throw new ArgumentNullException(nameof(promo));\n        }\n",
+    "calls": [
+      {
+        "callee_name": "nameof",
+        "fully_qualified_callee_name": "nameof",
+        "return_type": "",
+        "parameter_types": [],
+        "line_span": {
+          "start_line": 32,
+          "start_column": 64,
+          "end_line": 32,
+          "end_column": 77
+        }
+      }
+    ],
+    "line_span": {
+      "start_line": 30,
+      "start_column": 9,
+      "end_line": 33,
+      "end_column": 10
+    },
+    "inherits_from": [],
+    "implemented_interface_members": [],
+    "thrown_exceptions": [],
+    "is_override": false,
+    "data_provider_name": null,
+    "data_provider_source": null,
+    "imported_types": [],
+    "top_level_comment": null,
+    "inheritance_hierarchy": [],
+    "language": "csharp"
+  },
+  {
+    "symbol_type": "method",
+    "name": "ApplyDiscount",
+    "qualified_name": "Example.Orders.OrderService.ApplyDiscount",
+    "namespace": "Example.Orders",
+    "modifiers": [
+      "public",
+      "override"
+    ],
+    "annotations": [
+      {
+        "name": "Transactional",
+        "fully_qualified_name": "Transactional",
+        "values": {}
+      }
+    ],
+    "parameters": [
+      {
+        "name": "order",
+        "type": "Order",
+        "fully_qualified_type": "Example.Orders.Order"
+      },
+      {
+        "name": "code",
+        "type": "string",
+        "fully_qualified_type": "System.String"
+      }
+    ],
+    "return_type": {
+      "type": "decimal",
+      "fully_qualified_type": "System.Decimal"
+    },
+    "documentation": {
+      "summary": "Applies a promotional discount to an order.",
+      "params": [
+        {
+          "name": "order",
+          "description": "the order to discount"
+        },
+        {
+          "name": "code",
+          "description": "the promo code to apply"
+        }
+      ],
+      "returns": "the new total after discount",
+      "throws": [],
+      "raw": null
+    },
+    "body_code": "        {\n            Promo promo = _promoRepository.FindByCode(code);\n            Validate(promo);\n            return order.GetTotal() - promo.GetAmount();\n        }\n",
+    "full_code": "\n        /// \u003Csummary\u003E\n        /// Applies a promotional discount to an order.\n        /// \u003C/summary\u003E\n        /// \u003Cparam name=\u0022order\u0022\u003Ethe order to discount\u003C/param\u003E\n        /// \u003Cparam name=\u0022code\u0022\u003Ethe promo code to apply\u003C/param\u003E\n        /// \u003Creturns\u003Ethe new total after discount\u003C/returns\u003E\n        [Transactional(ReadOnly = false)]\n        public override decimal ApplyDiscount(Order order, string code)\n        {\n            Promo promo = _promoRepository.FindByCode(code);\n            Validate(promo);\n            return order.GetTotal() - promo.GetAmount();\n        }\n",
+    "calls": [
+      {
+        "callee_name": "FindByCode",
+        "fully_qualified_callee_name": "Example.Orders.PromoRepository.FindByCode",
+        "return_type": "Example.Orders.Promo",
+        "parameter_types": [
+          "System.String"
+        ],
+        "line_span": {
+          "start_line": 49,
+          "start_column": 27,
+          "end_line": 49,
+          "end_column": 60
+        }
+      },
+      {
+        "callee_name": "Validate",
+        "fully_qualified_callee_name": "Example.Orders.BaseService.Validate",
+        "return_type": "System.Void",
+        "parameter_types": [
+          "Example.Orders.Promo"
+        ],
+        "line_span": {
+          "start_line": 50,
+          "start_column": 13,
+          "end_line": 50,
+          "end_column": 28
+        }
+      },
+      {
+        "callee_name": "GetTotal",
+        "fully_qualified_callee_name": "Example.Orders.Order.GetTotal",
+        "return_type": "System.Decimal",
+        "parameter_types": [],
+        "line_span": {
+          "start_line": 51,
+          "start_column": 20,
+          "end_line": 51,
+          "end_column": 36
+        }
+      },
+      {
+        "callee_name": "GetAmount",
+        "fully_qualified_callee_name": "Example.Orders.Promo.GetAmount",
+        "return_type": "System.Decimal",
+        "parameter_types": [],
+        "line_span": {
+          "start_line": 51,
+          "start_column": 39,
+          "end_line": 51,
+          "end_column": 56
+        }
+      }
+    ],
+    "line_span": {
+      "start_line": 46,
+      "start_column": 9,
+      "end_line": 52,
+      "end_column": 10
+    },
+    "inherits_from": [
+      "BaseService"
+    ],
+    "implemented_interface_members": [],
+    "thrown_exceptions": [],
+    "is_override": true,
+    "data_provider_name": null,
+    "data_provider_source": null,
+    "imported_types": [],
+    "top_level_comment": null,
+    "inheritance_hierarchy": [],
+    "language": "csharp"
+  }
+]

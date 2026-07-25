@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Build linux-x64 self-contained single-file binary for CSharpCodeParser
-# Requires: dotnet SDK (7/8/9). We'll attempt dockerized build if dotnet not present.
+# Requires: dotnet SDK 8 or newer. Falls back to a dockerized build if unavailable.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -21,13 +21,13 @@ build_with_dotnet() {
 USE_DOCKER=false
 if command -v dotnet >/dev/null 2>&1; then
   DOTNET_VER=$(dotnet --version | cut -d'.' -f1)
-  if [[ "$DOTNET_VER" =~ ^[0-9]+$ ]] && [[ "$DOTNET_VER" -ge 9 ]]; then
+  if [[ "$DOTNET_VER" =~ ^[0-9]+$ ]] && [[ "$DOTNET_VER" -ge 8 ]]; then
     echo "==> Building with local dotnet SDK ($DOTNET_VER)"
     if ! build_with_dotnet; then
       USE_DOCKER=true
     fi
   else
-    echo "==> Local dotnet SDK ($DOTNET_VER) is < 9; will use Docker"
+    echo "==> Local dotnet SDK ($DOTNET_VER) is < 8; will use Docker"
     USE_DOCKER=true
   fi
 else
@@ -36,9 +36,9 @@ else
 fi
 
 if [ "$USE_DOCKER" = true ]; then
-  echo "==> Building via Docker mcr.microsoft.com/dotnet/sdk:9.0"
+  echo "==> Building via Docker mcr.microsoft.com/dotnet/sdk:8.0"
   docker run --rm -u $(id -u):$(id -g) -v "$SCRIPT_DIR":"/src" -w "/src" \
-    mcr.microsoft.com/dotnet/sdk:9.0 bash -lc '
+    mcr.microsoft.com/dotnet/sdk:8.0 bash -lc '
       dotnet restore /src/CSharpCodeParser.csproj && \
       dotnet publish /src/CSharpCodeParser.csproj -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true -o /src/linux-x64
     '
