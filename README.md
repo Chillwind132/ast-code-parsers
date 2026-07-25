@@ -11,20 +11,6 @@ Each parser is a standalone CLI that reads source code on **stdin** and writes a
 
 ---
 
-## Why native ASTs instead of tree-sitter
-
-tree-sitter is excellent at what it was built for: fast, error-tolerant, incremental *syntax* trees for editors. But it stops at syntax. These parsers use each language's own compiler front-end, which gives you a semantic model on top of the tree.
-
-- **Type resolution** — `String` resolves to `java.lang.String`, `decimal` to `System.Decimal`. Both the declared and the fully qualified type are reported. tree-sitter only sees the token.
-- **Symbol binding** — call sites resolve to the declaring type and return type, so `getTotal()` becomes `com.example.orders.Order.getTotal()` returning `java.math.BigDecimal`.
-- **Override and interface awareness** — `is_override` and `inheritance_hierarchy` come from the compiler's symbol table, not from guessing at an `@Override` annotation.
-- **Structured documentation** — Javadoc and XML doc comments are parsed into `summary`, `params`, `returns` and `throws` rather than returned as one comment blob.
-- **Correct language semantics for free** — generics, records, `var`, expression-bodied members and modern syntax levels are handled by the real grammar, which stays current with the language.
-
-The trade-off is honest: these parsers are heavier and slower than tree-sitter, and they are per-language rather than universal. Use tree-sitter when you need speed across a hundred languages; use these when extraction quality is what matters.
-
----
-
 ## Example
 
 Both examples in [`examples/`](examples/) are self-contained compilable files, so you can see symbol resolution actually working rather than degrading to bare identifiers.
@@ -313,15 +299,6 @@ csharp/linux-x64/CSharpCodeParser < MyClass.cs > methods.json
 ```
 
 Both read a single compilation unit from stdin, so batching across a repository is left to the caller — spawn one process per file, or keep a worker pool if throughput matters.
-
----
-
-## Limitations
-
-- **One file at a time.** Neither parser walks a directory tree. Types declared in the file being parsed resolve fully, as do JDK and .NET base class library types; types from other files or third-party packages degrade to the declared simple name.
-- **Methods only.** Fields, properties, and constructors are not currently emitted.
-- **C# references a fixed BCL.** The Roslyn compilation uses embedded .NET 8 reference assemblies, so resolution reflects that surface regardless of the code's own target framework.
-- **Process startup dominates on small files.** JVM and self-contained-binary startup costs tens to hundreds of milliseconds per invocation.
 
 ---
 
