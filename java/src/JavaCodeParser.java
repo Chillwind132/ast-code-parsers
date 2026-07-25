@@ -54,6 +54,7 @@
 
 
 import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
@@ -74,7 +75,10 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import java.io.BufferedReader;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -165,6 +169,16 @@ public class JavaCodeParser {
         int endColumn;
     }
 
+    // System.out follows the platform charset, which mangles non-ASCII identifiers on Windows.
+    // JSON is UTF-8 by definition, so write it as such regardless of host.
+    private static final PrintStream OUT =
+            new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
+    private static final PrintStream ERR =
+            new PrintStream(new FileOutputStream(FileDescriptor.err), true, StandardCharsets.UTF_8);
+
+    /** Exit code used when the input could not be parsed at all. */
+    private static final int EXIT_PARSE_FAILED = 2;
+
     public static void main(String[] args) throws Exception {
         String sourceRoot = "src";
         CombinedTypeSolver typeSolver = new CombinedTypeSolver();
@@ -189,7 +203,19 @@ public class JavaCodeParser {
         }
         String codeInput = sb.toString();
 
-        CompilationUnit cu = StaticJavaParser.parse(codeInput);
+        CompilationUnit cu;
+        try {
+            cu = StaticJavaParser.parse(codeInput);
+        } catch (ParseProblemException e) {
+            // A batch indexer should get an empty result plus a readable reason, not a stack trace
+            // on stdout's sibling channel and nothing to consume.
+            OUT.println("[]");
+            e.getProblems().forEach(p -> ERR.println("JavaCodeParser: " + p.getMessage().split("\n")[0]));
+            OUT.flush();
+            ERR.flush();
+            System.exit(EXIT_PARSE_FAILED);
+            return;
+        }
 
         List<MethodInfo> results = new ArrayList<>();
 
@@ -207,7 +233,7 @@ public class JavaCodeParser {
                 .orElse(null);
 
         for (TypeDeclaration<?> typeDecl : cu.getTypes()) {
-            processTypeDeclaration(typeDecl, packageName, results, imports, topComment);
+            processTypeDeclaration(typeDecl, packageName, null, results, imports, topComment);
         }
 
         linkDataProviders(results);
@@ -219,21 +245,39 @@ public class JavaCodeParser {
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String jsonOutput = gson.toJson(finalJsonList);
-        System.out.println(jsonOutput);
+        OUT.println(jsonOutput);
+        OUT.flush();
     }
 
-    private static void processTypeDeclaration(TypeDeclaration<?> typeDecl, String packageName, List<MethodInfo> results, List<String> imports, String topComment) {
+    /**
+     * JavaParser's printer and Javadoc reader both emit the platform line separator, which would
+     * make the same input produce different output on Windows and Linux.
+     */
+    private static String normalizeEol(String text) {
+        return text == null ? null : text.replace("\r\n", "\n").replace("\r", "\n");
+    }
+
+    /**
+     * @param enclosingTypeName dotted name of the types this declaration is nested in, or null at
+     *                          the top level. Nested types are named Outer.Inner, so a method's
+     *                          qualified name identifies exactly one declaration.
+     */
+    private static void processTypeDeclaration(TypeDeclaration<?> typeDecl, String packageName, String enclosingTypeName, List<MethodInfo> results, List<String> imports, String topComment) {
         if (typeDecl.isClassOrInterfaceDeclaration()) {
-            processClassOrInterface(typeDecl.asClassOrInterfaceDeclaration(), packageName, results, imports, topComment);
+            processClassOrInterface(typeDecl.asClassOrInterfaceDeclaration(), packageName, enclosingTypeName, results, imports, topComment);
         } else if (typeDecl.isEnumDeclaration()) {
-            processEnumDeclaration(typeDecl.asEnumDeclaration(), packageName, results, imports, topComment);
+            processEnumDeclaration(typeDecl.asEnumDeclaration(), packageName, enclosingTypeName, results, imports, topComment);
         } else if (typeDecl.isRecordDeclaration()) {
-            processRecordDeclaration(typeDecl.asRecordDeclaration(), packageName, results, imports, topComment);
+            processRecordDeclaration(typeDecl.asRecordDeclaration(), packageName, enclosingTypeName, results, imports, topComment);
         }
     }
 
-    private static void processClassOrInterface(ClassOrInterfaceDeclaration classDecl, String packageName, List<MethodInfo> results, List<String> imports, String topComment) {
-        String className = classDecl.getNameAsString();
+    private static String nest(String enclosingTypeName, String simpleName) {
+        return enclosingTypeName == null ? simpleName : enclosingTypeName + "." + simpleName;
+    }
+
+    private static void processClassOrInterface(ClassOrInterfaceDeclaration classDecl, String packageName, String enclosingTypeName, List<MethodInfo> results, List<String> imports, String topComment) {
+        String className = nest(enclosingTypeName, classDecl.getNameAsString());
         List<String> baseTypes = new ArrayList<>();
         baseTypes.addAll(classDecl.getExtendedTypes().stream().map(t -> t.asString()).collect(Collectors.toList()));
         baseTypes.addAll(classDecl.getImplementedTypes().stream().map(t -> t.asString()).collect(Collectors.toList()));
@@ -245,17 +289,17 @@ public class JavaCodeParser {
 
         for (BodyDeclaration<?> member : classDecl.getMembers()) {
             if (member.isClassOrInterfaceDeclaration()) {
-                processClassOrInterface(member.asClassOrInterfaceDeclaration(), packageName, results, imports, topComment);
+                processClassOrInterface(member.asClassOrInterfaceDeclaration(), packageName, className, results, imports, topComment);
             } else if (member.isEnumDeclaration()) {
-                processEnumDeclaration(member.asEnumDeclaration(), packageName, results, imports, topComment);
+                processEnumDeclaration(member.asEnumDeclaration(), packageName, className, results, imports, topComment);
             } else if (member.isRecordDeclaration()) {
-                processRecordDeclaration(member.asRecordDeclaration(), packageName, results, imports, topComment);
+                processRecordDeclaration(member.asRecordDeclaration(), packageName, className, results, imports, topComment);
             }
         }
     }
 
-    private static void processEnumDeclaration(EnumDeclaration enumDecl, String packageName, List<MethodInfo> results, List<String> imports, String topComment) {
-        String className = enumDecl.getNameAsString();
+    private static void processEnumDeclaration(EnumDeclaration enumDecl, String packageName, String enclosingTypeName, List<MethodInfo> results, List<String> imports, String topComment) {
+        String className = nest(enclosingTypeName, enumDecl.getNameAsString());
         for (BodyDeclaration<?> member : enumDecl.getMembers()) {
             if (member.isMethodDeclaration()) {
                 MethodInfo info = extractMethodInfo(member.asMethodDeclaration(), packageName, className, Collections.emptyList(), imports, topComment, enumDecl);
@@ -264,17 +308,17 @@ public class JavaCodeParser {
         }
         for (BodyDeclaration<?> member : enumDecl.getMembers()) {
             if (member.isClassOrInterfaceDeclaration()) {
-                processClassOrInterface(member.asClassOrInterfaceDeclaration(), packageName, results, imports, topComment);
+                processClassOrInterface(member.asClassOrInterfaceDeclaration(), packageName, className, results, imports, topComment);
             } else if (member.isEnumDeclaration()) {
-                processEnumDeclaration(member.asEnumDeclaration(), packageName, results, imports, topComment);
+                processEnumDeclaration(member.asEnumDeclaration(), packageName, className, results, imports, topComment);
             } else if (member.isRecordDeclaration()) {
-                processRecordDeclaration(member.asRecordDeclaration(), packageName, results, imports, topComment);
+                processRecordDeclaration(member.asRecordDeclaration(), packageName, className, results, imports, topComment);
             }
         }
     }
 
-    private static void processRecordDeclaration(RecordDeclaration recordDecl, String packageName, List<MethodInfo> results, List<String> imports, String topComment) {
-        String className = recordDecl.getNameAsString();
+    private static void processRecordDeclaration(RecordDeclaration recordDecl, String packageName, String enclosingTypeName, List<MethodInfo> results, List<String> imports, String topComment) {
+        String className = nest(enclosingTypeName, recordDecl.getNameAsString());
         for (BodyDeclaration<?> member : recordDecl.getMembers()) {
             if (member.isMethodDeclaration()) {
                 MethodInfo info = extractMethodInfo(member.asMethodDeclaration(), packageName, className, Collections.emptyList(), imports, topComment, recordDecl);
@@ -283,11 +327,11 @@ public class JavaCodeParser {
         }
         for (BodyDeclaration<?> member : recordDecl.getMembers()) {
             if (member.isClassOrInterfaceDeclaration()) {
-                processClassOrInterface(member.asClassOrInterfaceDeclaration(), packageName, results, imports, topComment);
+                processClassOrInterface(member.asClassOrInterfaceDeclaration(), packageName, className, results, imports, topComment);
             } else if (member.isEnumDeclaration()) {
-                processEnumDeclaration(member.asEnumDeclaration(), packageName, results, imports, topComment);
+                processEnumDeclaration(member.asEnumDeclaration(), packageName, className, results, imports, topComment);
             } else if (member.isRecordDeclaration()) {
-                processRecordDeclaration(member.asRecordDeclaration(), packageName, results, imports, topComment);
+                processRecordDeclaration(member.asRecordDeclaration(), packageName, className, results, imports, topComment);
             }
         }
     }
@@ -315,7 +359,10 @@ public class JavaCodeParser {
                 }
             }
 
-            if (annInfo.fullyQualifiedName.endsWith(".Test") && annInfo.values.containsKey("dataProvider")) {
+            // Without testng on the type solver path the annotation only resolves to its simple
+            // name, which is the normal case when parsing a single file from stdin.
+            boolean isTestAnnotation = annInfo.fullyQualifiedName.endsWith(".Test") || annInfo.name.equals("Test");
+            if (isTestAnnotation && annInfo.values.containsKey("dataProvider")) {
                 info.dataProviderName = annInfo.values.get("dataProvider");
             }
 
@@ -349,8 +396,8 @@ public class JavaCodeParser {
             info.parameters.add(pi);
         }
 
-        info.fullCode = method.toString();
-        info.code = method.getBody().map(Object::toString).orElse(method.toString());
+        info.fullCode = normalizeEol(method.toString());
+        info.code = normalizeEol(method.getBody().map(Object::toString).orElse(method.toString()));
 
         method.getThrownExceptions().forEach(te -> {
             ThrownExceptionInfo tei = new ThrownExceptionInfo();
@@ -368,24 +415,24 @@ public class JavaCodeParser {
             if (comment.isJavadocComment()) {
                 try {
                     Javadoc jd = comment.asJavadocComment().parse();
-                    info.xmlDoc.raw = jd.toText();
-                    info.xmlDoc.summary = jd.getDescription().toText().trim();
+                    info.xmlDoc.raw = normalizeEol(jd.toText());
+                    info.xmlDoc.summary = normalizeEol(jd.getDescription().toText().trim());
 
                     for (JavadocBlockTag tag : jd.getBlockTags()) {
                         switch (tag.getTagName()) {
                             case "param":
                                 XmlParam xp = new XmlParam();
                                 xp.name = tag.getName().orElse("");
-                                xp.description = tag.getContent().toText().trim();
+                                xp.description = normalizeEol(tag.getContent().toText().trim());
                                 info.xmlDoc.params.add(xp);
                                 break;
                             case "return":
-                                info.xmlDoc.returns = tag.getContent().toText().trim();
+                                info.xmlDoc.returns = normalizeEol(tag.getContent().toText().trim());
                                 break;
                             case "throws":
                                 XmlThrows xt = new XmlThrows();
                                 xt.exceptionType = tag.getName().orElse("");
-                                xt.description = tag.getContent().toText().trim();
+                                xt.description = normalizeEol(tag.getContent().toText().trim());
                                 info.xmlDoc.throwsList.add(xt);
                                 break;
                             default:
@@ -499,7 +546,8 @@ public class JavaCodeParser {
         Map<String, MethodInfo> dataProviders = new HashMap<>();
         for (MethodInfo mi : methods) {
             for (AnnotationInfo ann : mi.annotations) {
-                if (ann.fullyQualifiedName.endsWith(".DataProvider") && ann.values.containsKey("name")) {
+                boolean isDataProvider = ann.fullyQualifiedName.endsWith(".DataProvider") || ann.name.equals("DataProvider");
+                if (isDataProvider && ann.values.containsKey("name")) {
                     String dpName = ann.values.get("name");
                     dataProviders.put(dpName, mi);
                     break;
@@ -515,7 +563,7 @@ public class JavaCodeParser {
     }
 
     private static String extractAllJavadocInfoAsRaw(Javadoc jd) {
-        return jd.toText();
+        return normalizeEol(jd.toText());
     }
 
     private static Map<String, Object> methodInfoToJsonMap(MethodInfo mi) {

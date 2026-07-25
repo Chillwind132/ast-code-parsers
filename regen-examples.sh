@@ -29,4 +29,10 @@ cat examples/OrderService.java | java -jar "$JAR" > examples/OrderService.java.o
 echo "==> examples/OrderService.cs.output.json"
 cat examples/OrderService.cs | "$CSBIN" > examples/OrderService.cs.output.json
 
+echo "==> examples/Nesting.java.output.json"
+cat examples/Nesting.java | java -jar "$JAR" > examples/Nesting.java.output.json
+
+echo "==> examples/Nesting.cs.output.json"
+cat examples/Nesting.cs | "$CSBIN" > examples/Nesting.cs.output.json
+
 echo "==> Done. Review the diff with: git diff examples/"

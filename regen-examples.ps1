@@ -29,4 +29,10 @@ Save-Normalized (Get-Content examples\OrderService.java -Raw | java -jar $jar) "
 Write-Host "==> examples\OrderService.cs.output.json"
 Save-Normalized (Get-Content examples\OrderService.cs -Raw | & ".\$exe") "examples\OrderService.cs.output.json"
 
+Write-Host "==> examples\Nesting.java.output.json"
+Save-Normalized (Get-Content examples\Nesting.java -Raw | java -jar $jar) "examples\Nesting.java.output.json"
+
+Write-Host "==> examples\Nesting.cs.output.json"
+Save-Normalized (Get-Content examples\Nesting.cs -Raw | & ".\$exe") "examples\Nesting.cs.output.json"
+
 Write-Host "==> Done. Review the diff with: git diff examples\" -ForegroundColor Green

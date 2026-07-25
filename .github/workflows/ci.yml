@@ -24,9 +24,11 @@ jobs:
 
       - name: Verify example output is reproducible
         run: |
-          cat examples/OrderService.java \
-            | java -jar java/JavaCodeParser_Full.jar > actual.json
-          diff -u examples/OrderService.java.output.json actual.json
+          for name in OrderService Nesting; do
+            cat "examples/$name.java" \
+              | java -jar java/JavaCodeParser_Full.jar > actual.json
+            diff -u "examples/$name.java.output.json" actual.json
+          done
 
   csharp:
     name: C# parser
@@ -44,6 +46,8 @@ jobs:
 
       - name: Verify example output is reproducible
         run: |
-          cat examples/OrderService.cs \
-            | ./csharp/linux-x64/CSharpCodeParser > actual.json
-          diff -u examples/OrderService.cs.output.json actual.json
+          for name in OrderService Nesting; do
+            cat "examples/$name.cs" \
+              | ./csharp/linux-x64/CSharpCodeParser > actual.json
+            diff -u "examples/$name.cs.output.json" actual.json
+          done

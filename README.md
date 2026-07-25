@@ -317,6 +317,15 @@ To save the result instead of printing it, add `> methods.json` to the end of an
 
 Both parsers read a single compilation unit per run, so batching across a repository is left to the caller — spawn one process per file, or keep a worker pool if throughput matters.
 
+### Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Parsed cleanly. |
+| `2` | The input has syntax errors, described on stderr. Java cannot recover and prints `[]`; C# error-recovers and still prints what it found, which may be incomplete. |
+
+stdout is always valid JSON, so a batch indexer can consume the output and use the exit code to decide whether to trust it.
+
 ---
 
 ## License

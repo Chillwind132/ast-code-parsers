@@ -1,0 +1,193 @@
+[
+  {
+    "symbol_type": "method",
+    "name": "spin",
+    "qualified_name": "com.example.modern.Widget.spin",
+    "namespace": "com.example.modern",
+    "modifiers": [
+      "public"
+    ],
+    "annotations": [],
+    "parameters": [
+      {
+        "name": "name",
+        "fully_qualified_type": "java.lang.String",
+        "type": "String"
+      }
+    ],
+    "return_type": {
+      "fully_qualified_type": "int",
+      "type": "int"
+    },
+    "documentation": {
+      "params": [],
+      "throws": []
+    },
+    "body_code": "{\n    return name.length();\n}",
+    "full_code": "public int spin(String name) {\n    return name.length();\n}",
+    "calls": [
+      {
+        "fully_qualified_callee_name": "java.lang.String.length()",
+        "return_type": "int",
+        "parameter_types": [],
+        "callee_name": "length",
+        "line_span": {
+          "start_column": 16,
+          "start_line": 9,
+          "end_line": 9,
+          "end_column": 28
+        }
+      }
+    ],
+    "line_span": {
+      "start_column": 5,
+      "start_line": 8,
+      "end_line": 10,
+      "end_column": 5
+    },
+    "inherits_from": [],
+    "implemented_interface_members": [],
+    "thrown_exceptions": [],
+    "is_override": false,
+    "imported_types": [],
+    "inheritance_hierarchy": [
+      "java.lang.Object"
+    ],
+    "language": "java"
+  },
+  {
+    "symbol_type": "method",
+    "name": "turn",
+    "qualified_name": "com.example.modern.Widget.Cog.turn",
+    "namespace": "com.example.modern",
+    "modifiers": [
+      "public"
+    ],
+    "annotations": [],
+    "parameters": [
+      {
+        "name": "times",
+        "fully_qualified_type": "int",
+        "type": "int"
+      }
+    ],
+    "return_type": {
+      "fully_qualified_type": "int",
+      "type": "int"
+    },
+    "documentation": {
+      "params": [],
+      "throws": []
+    },
+    "body_code": "{\n    return times;\n}",
+    "full_code": "public int turn(int times) {\n    return times;\n}",
+    "calls": [],
+    "line_span": {
+      "start_column": 9,
+      "start_line": 13,
+      "end_line": 15,
+      "end_column": 9
+    },
+    "inherits_from": [],
+    "implemented_interface_members": [],
+    "thrown_exceptions": [],
+    "is_override": false,
+    "imported_types": [],
+    "inheritance_hierarchy": [
+      "java.lang.Object"
+    ],
+    "language": "java"
+  },
+  {
+    "symbol_type": "method",
+    "name": "label",
+    "qualified_name": "com.example.modern.Widget.Mode.label",
+    "namespace": "com.example.modern",
+    "modifiers": [
+      "public"
+    ],
+    "annotations": [],
+    "parameters": [],
+    "return_type": {
+      "fully_qualified_type": "java.lang.String",
+      "type": "String"
+    },
+    "documentation": {
+      "params": [],
+      "throws": []
+    },
+    "body_code": "{\n    return name();\n}",
+    "full_code": "public String label() {\n    return name();\n}",
+    "calls": [
+      {
+        "fully_qualified_callee_name": "java.lang.Enum.name()",
+        "return_type": "java.lang.String",
+        "parameter_types": [],
+        "callee_name": "name",
+        "line_span": {
+          "start_column": 20,
+          "start_line": 22,
+          "end_line": 22,
+          "end_column": 25
+        }
+      }
+    ],
+    "line_span": {
+      "start_column": 9,
+      "start_line": 21,
+      "end_line": 23,
+      "end_column": 9
+    },
+    "inherits_from": [],
+    "implemented_interface_members": [],
+    "thrown_exceptions": [],
+    "is_override": false,
+    "imported_types": [],
+    "inheritance_hierarchy": [
+      "java.lang.Enum",
+      "java.lang.Object",
+      "java.lang.constant.Constable",
+      "java.lang.Comparable",
+      "java.io.Serializable"
+    ],
+    "language": "java"
+  },
+  {
+    "symbol_type": "method",
+    "name": "area",
+    "qualified_name": "com.example.modern.Circle.area",
+    "namespace": "com.example.modern",
+    "modifiers": [
+      "public"
+    ],
+    "annotations": [],
+    "parameters": [],
+    "return_type": {
+      "fully_qualified_type": "double",
+      "type": "double"
+    },
+    "documentation": {
+      "params": [],
+      "throws": []
+    },
+    "body_code": "{\n    return Math.PI * radius * radius;\n}",
+    "full_code": "public double area() {\n    return Math.PI * radius * radius;\n}",
+    "calls": [],
+    "line_span": {
+      "start_column": 5,
+      "start_line": 28,
+      "end_line": 30,
+      "end_column": 5
+    },
+    "inherits_from": [],
+    "implemented_interface_members": [],
+    "thrown_exceptions": [],
+    "is_override": false,
+    "imported_types": [],
+    "inheritance_hierarchy": [
+      "java.lang.Record",
+      "java.lang.Object"
+    ],
+    "language": "java"
+  }
+]

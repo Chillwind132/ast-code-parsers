@@ -68,13 +68,26 @@ class Program
         genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
         miscellaneousOptions: SymbolDisplayMiscellaneousOptions.ExpandNullable);
 
-    static void Main()
+    /// <summary>Exit code used when the input contains syntax errors; output is still emitted.</summary>
+    const int ExitParseErrors = 2;
+
+    static int Main()
     {
         string code = ReadAllStdin();
 
         // Parse code
         SyntaxTree tree = CSharpSyntaxTree.ParseText(code);
         var root = tree.GetCompilationUnitRoot();
+
+        // Roslyn error-recovers, so a malformed file still yields plausible-looking output.
+        // Report the syntax errors so the caller can tell degraded results from clean ones.
+        var syntaxErrors = tree.GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ToList();
+        foreach (var d in syntaxErrors)
+        {
+            Console.Error.WriteLine("CSharpCodeParser: " + d.ToString());
+        }
 
         // Attempt to create a Compilation for semantic info.
         // Reference assemblies are embedded rather than loaded from disk, because
@@ -157,35 +170,33 @@ class Program
                 }
             }
 
-            // Find class and namespace
-            string className = null;
-            string namespaceName = null;
-            var parent = method.Parent;
-            while (parent != null)
+            // Walk outwards to the compilation unit, accumulating every enclosing type and
+            // namespace. TypeDeclarationSyntax covers class, struct, interface and record;
+            // BaseNamespaceDeclarationSyntax covers both block and file-scoped namespaces.
+            // Each segment is prepended, so nested declarations keep their full path rather than
+            // collapsing onto whichever one the walk happened to see last.
+            var typeNames = new List<string>();
+            var namespaceParts = new List<string>();
+            bool baseTypesFound = false;
+            for (var parent = method.Parent; parent != null; parent = parent.Parent)
             {
-                if (parent is ClassDeclarationSyntax cds)
+                if (parent is TypeDeclarationSyntax tds)
                 {
-                    className = cds.Identifier.Text;
-                    info.ClassBaseTypes = cds.BaseList?.Types.Select(t => t.Type.ToString()).ToList() ?? new List<string>();
+                    typeNames.Insert(0, tds.Identifier.Text);
+                    if (!baseTypesFound)
+                    {
+                        // Only the innermost type declares this method's base types.
+                        info.ClassBaseTypes = tds.BaseList?.Types.Select(t => t.Type.ToString()).ToList() ?? new List<string>();
+                        baseTypesFound = true;
+                    }
                 }
-                else if (parent is StructDeclarationSyntax sds)
+                else if (parent is BaseNamespaceDeclarationSyntax nds)
                 {
-                    className = sds.Identifier.Text;
-                    info.ClassBaseTypes = sds.BaseList?.Types.Select(t => t.Type.ToString()).ToList() ?? new List<string>();
+                    namespaceParts.Insert(0, nds.Name.ToString());
                 }
-                else if (parent is InterfaceDeclarationSyntax ids)
-                {
-                    className = ids.Identifier.Text;
-                    info.ClassBaseTypes = ids.BaseList?.Types.Select(t => t.Type.ToString()).ToList() ?? new List<string>();
-                }
-                else if (parent is NamespaceDeclarationSyntax nds)
-                {
-                    namespaceName = nds.Name.ToString();
-                }
-                parent = parent.Parent;
             }
-            info.ClassName = className;
-            info.NamespaceName = namespaceName;
+            info.ClassName = typeNames.Count > 0 ? string.Join(".", typeNames) : null;
+            info.NamespaceName = namespaceParts.Count > 0 ? string.Join(".", namespaceParts) : null;
 
             // Semantic analysis for return types, overrides, etc.
             if (semanticModel != null)
@@ -275,12 +286,16 @@ class Program
 
         string jsonOutput = JsonSerializer.Serialize(finalJsonList, new JsonSerializerOptions { WriteIndented = true });
         Console.WriteLine(jsonOutput);
+
+        return syntaxErrors.Count > 0 ? ExitParseErrors : 0;
     }
 
     static string ReadAllStdin()
     {
         using var reader = new StreamReader(Console.OpenStandardInput());
-        return reader.ReadToEnd();
+        // Echoed source text would otherwise carry the host's line separator into the JSON,
+        // making the same file produce different output on Windows and Linux.
+        return reader.ReadToEnd().Replace("\r\n", "\n");
     }
 
     static string CleanXmlDoc(string xml)
