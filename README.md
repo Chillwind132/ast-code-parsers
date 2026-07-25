@@ -137,7 +137,7 @@ Note what a syntax-only parser could not have given you: `String` resolved to `j
 
 ### The same method in C#
 
-`examples/OrderService.cs` is the direct equivalent, and the output uses identical field names:
+`examples/OrderService.cs` is the direct equivalent, and the output uses identical field names. Showing the `ApplyDiscount` method node only, with the same one-of-four calls and the documentation and location fields elided:
 
 ```bash
 cat examples/OrderService.cs \
