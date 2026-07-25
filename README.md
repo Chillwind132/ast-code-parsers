@@ -53,18 +53,17 @@ public class OrderService extends BaseService {
 ```
 
 ```bash
-cat examples/OrderService.java \
-  | java -jar java/JavaCodeParser_Full.jar --pretty --file examples/OrderService.java
+cat examples/OrderService.java | java -jar java/JavaCodeParser_Full.jar --pretty
 ```
 
 ### Output
 
-One document per file: file-level context once, then a type per declaration, then the methods. Showing the `OrderService` type with only `applyDiscount` — the complete document is in [`examples/OrderService.java.output.json`](examples/OrderService.java.output.json).
+One document per file: file-level context once, then a type per declaration, then the methods. Showing the `OrderService` type with only `applyDiscount` — the complete document is in [`examples/OrderService.java.output.json`](examples/OrderService.java.output.json), which is generated with `--file` and so carries a path where this shows `null`.
 
 ```json
 {
   "schema_version": 2,
-  "file": "examples/OrderService.java",
+  "file": null,
   "language": "java",
   "imports": ["java.math.BigDecimal"],
   "top_level_comment": null,
@@ -140,8 +139,7 @@ Note what a syntax-only parser could not have given you: `String` resolved to `j
 `examples/OrderService.cs` is the direct equivalent, and the output uses identical field names. Showing the `ApplyDiscount` method node only, with the same one-of-four calls and the documentation and location fields elided:
 
 ```bash
-cat examples/OrderService.cs \
-  | csharp/linux-x64/CSharpCodeParser --pretty --file examples/OrderService.cs
+cat examples/OrderService.cs | csharp/linux-x64/CSharpCodeParser --pretty
 ```
 
 ```json
